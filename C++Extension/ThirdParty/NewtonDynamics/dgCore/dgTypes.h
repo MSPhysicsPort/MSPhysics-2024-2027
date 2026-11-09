@@ -149,7 +149,9 @@
 //#define DG_USE_THREAD_EMULATION
 
 #if (defined (_WIN_32_VER) || defined (_WIN_64_VER))
-	#if _MSC_VER < 1700
+	#if defined (_MSC_VER) && _MSC_VER < 1700
+		// MinGW: _MSC_VER is undefined, which used to evaluate as 0 < 1700
+		// and wrongly enabled DG_USE_THREAD_EMULATION on Win64/MinGW.
 		#ifndef DG_USE_THREAD_EMULATION
 			#define DG_USE_THREAD_EMULATION
 		#endif
@@ -198,7 +200,15 @@
 	#define DG_INLINE inline
 #else 
 	#if (defined (_WIN_32_VER) || defined (_WIN_64_VER))
-		#define DG_INLINE __forceinline 
+		#if defined (__MINGW32__)
+			// MinGW: GCC maps __forceinline to always_inline, which is a
+			// hard error on recursive functions (e.g. dgInverseDynamics::
+			// dgNode::~dgNode deletes its children). MSVC silently ignores
+			// forceinline there, so plain inline matches MSVC behaviour.
+			#define DG_INLINE inline
+		#else
+			#define DG_INLINE __forceinline
+		#endif
 	#else 
 		#define DG_INLINE	inline
 		//#define DG_INLINE	 __attribute__((always_inline))

@@ -84,6 +84,8 @@ Do the following when updating NewtonDynamics:
 #define MSP_H
 
 #include "msp_util.h"
+#include <cstring> // std::strcmp/std::memcpy: MSVC pulls <cstring> in
+                   // transitively; MinGW needs the explicit include.
 #include <set>
 #include <map>
 #include <vector>

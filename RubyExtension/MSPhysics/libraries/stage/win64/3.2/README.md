@@ -22,6 +22,9 @@ shared by SketchUp 2024, 2025 and 2026 (all three embed Ruby 3.2.2).
 
 ## Status
 
-Placeholder only — `msp_lib.so` is produced by CI (`.github/workflows/build.yml`)
-and copied here by the `package` job. Until the first green CI run, this
-directory contains only this README.
+`msp_lib.so` (win64/3.2) and `newton.dll` (parent `win64/`) are present,
+cross-compiled on Linux with MinGW-w64 — see `PORTING.md` §4.3. `file`
+reports both as PE32+ x86-64 DLLs and `msp_lib.so` exports
+`Init_msp_lib`. Still unverified on a real Windows + SketchUp machine
+(see `PORTING.md` §7); the MSVC build (`.github/workflows/build.yml`)
+remains the reference path.

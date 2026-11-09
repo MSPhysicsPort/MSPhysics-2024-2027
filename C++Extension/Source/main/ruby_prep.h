@@ -13,6 +13,13 @@
            no _WIN_32_VER branch. See Projects/VS: all Win32 configs removed. */
         #error "MSPhysics msp_lib requires 64-bit Windows (x64). 32-bit (Win32) is unsupported."
     #endif
+#elif defined (_WIN32) || defined (__MINGW32__)
+    /* MinGW-w64 targeting Windows x64: same as the MSVC branch above.
+       (Without this, MinGW fell into the #else branch and wrongly
+       defined _MACOSX_VER, pulling in sys/sysctl.h on Windows.) */
+    #ifndef _WIN_64_VER
+        #define _WIN_64_VER
+    #endif
 #elif defined(__aarch64__)
     /* Apple Silicon (arm64) macOS: no x86 SSE intrinsic headers.
        _MACOSX_VER is defined below; the SSE includes are guarded by

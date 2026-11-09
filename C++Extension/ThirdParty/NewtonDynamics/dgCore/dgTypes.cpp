@@ -28,7 +28,10 @@
 
 dgUnsigned64 dgGetTimeInMicrosenconds()
 {
-#ifdef _MSC_VER
+#if defined (_MSC_VER) || defined (__MINGW32__)
+// MinGW: Newton's Windows branches are gated on _MSC_VER; MinGW targets
+// Windows too, so the QueryPerformanceCounter branch applies here as well.
+// (Do NOT define _MSC_VER for MinGW -- it breaks MinGW's own headers.)
 	static LARGE_INTEGER frequency;
 	static LARGE_INTEGER baseCount;
 	if (!frequency.QuadPart) {

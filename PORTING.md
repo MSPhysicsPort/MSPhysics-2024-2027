@@ -179,6 +179,82 @@ The 3.4 macOS build is the same command with `-target "Ruby 3.4 - 64"` and
 `ARCHS=arm64` only (no `lipo` step). Both 3.4 builds additionally need the
 Ruby 3.4.9 headers/libs — see §6.
 
+### 4.3 MinGW-w64 cross-compile from Linux (fallback — works today)
+
+When no Windows machine or GitHub login is available, the win64/3.2
+binaries can be built on Linux with MinGW-w64. This produced the
+`stage/win64/3.2/msp_lib.so` and `stage/win64/newton.dll` shipped in
+1.2.0 (2026-11-09, GCC 13.2.0, MinGW-w64 11.0.1). It is a fallback, not
+the primary path: the MSVC build in §4.1/§4.2 remains the reference, and
+the MinGW binaries must be re-validated on a real Windows + SketchUp
+machine (see §7) before any public release.
+
+```bash
+bash scripts/build-win64-3.2-mingw.sh   # ~3 min, incremental (reuses build/*.a)
+file build/mingw-win64-3.2/msp_lib.so   # must be PE32+ x86-64 DLL
+```
+
+Toolchain: the script uses `~/workspace/mingw-w64/usr` if present
+(extracted from the apt cache `.deb`s, survives VM resets; `/usr/bin`
+does not), else a system `x86_64-w64-mingw32-g++`. To (re)create it:
+`dpkg-deb -x` the cached `binutils-mingw-w64-x86-64`,
+`gcc-mingw-w64-base`, `gcc-mingw-w64-x86-64-win32`,
+`gcc-mingw-w64-x86-64-win32-runtime`, `g++-mingw-w64-x86-64-win32`,
+`mingw-w64-x86-64-dev`, `mingw-w64-common` `.deb`s into
+`~/workspace/mingw-w64/`, then symlink the `-win32` suffixed binaries
+to their plain names in `usr/bin/`.
+
+What the script does (mirrors the `Release (3.2)|x64` vcxproj):
+dMath + dgCore + dgPhysics from source → static libs → `newton.dll`
+(`libnewton.dll.a` import lib) → `msp_lib.so`, linked against
+`x64-ucrt-ruby320.lib`, SDL2/SDL2_mixer, `libnewton.dll.a`,
+`libdMath.a` (msp uses `dMatrix` directly, like the MSVC project
+reference). Flags: C++17, `-msse3` (Newton uses `_mm_hadd_ps`),
+`-D_WIN32_WINNT=0x0A00`, `RUBY_VERSION32`, `-static-libgcc
+-static-libstdc++` (SketchUp ships no MinGW runtime DLLs, and Windows
+does not search the extension's own folder for dependencies).
+
+MinGW-only patches this required (all guarded by `__MINGW32__`, zero
+effect on MSVC builds):
+- `ThirdParty/NewtonDynamics/dgCore/dgTypes.cpp` — `dgGetTimeInMicrosenconds`
+  Windows branch: `#ifdef _MSC_VER` → `#if defined(_MSC_VER) ||
+  defined(__MINGW32__)` (QueryPerformanceCounter).
+- `ThirdParty/NewtonDynamics/dgCore/dgTypes.h` — `DG_INLINE`: plain
+  `inline` on MinGW (GCC maps `__forceinline` to `always_inline`, a hard
+  error on the recursive `dgInverseDynamics::dgNode` destructor; MSVC
+  silently ignores forceinline there). Also `#if _MSC_VER < 1700` →
+  `#if defined(_MSC_VER) && _MSC_VER < 1700` (otherwise the undefined
+  macro evaluates to 0 and wrongly enables `DG_USE_THREAD_EMULATION`).
+- `Source/main/ruby_prep.h` — MinGW/Windows branch added before the
+  `#else` that wrongly defined `_MACOSX_VER` (and pulled in
+  `sys/sysctl.h`) for any non-MSVC compiler.
+- `Source/win/targetver.h` — `WinSDKVer.h` include skipped on MinGW
+  (MinGW does not ship it; `_WIN32_WINNT` is set by the build).
+- `Source/main/msp.h` — explicit `#include <cstring>` (`std::strcmp` /
+  `std::memcpy`; MSVC pulls it in transitively, MinGW does not).
+- `ThirdParty/Ruby/include/3.2/win32_x64/ruby/config.h` — MinGW block:
+  `#undef HAVE___ASSUME` (MSVC-only intrinsic; GCC has no `__assume`,
+  so `RBIMPL_ASSUME` failed everywhere), `#define
+  HAVE_STRUCT_TIMEZONE 1` (MinGW's `time.h` already defines it;
+  Ruby's `missing.h` must not redefine it), `#define
+  HAVE_BUILTIN___BUILTIN_CONSTANT_P 1` and
+  `HAVE_STMT_AND_DECL_IN_EXPR 1` (GCC has both; without them
+  `rb_varargs_argc_check` is undefined and `rb_funcall` fails).
+  `HAVE_BUILTIN___BUILTIN_CHOOSE_EXPR_CONSTANT_P` is deliberately NOT
+  defined — its branch would declare `rb_varargs_bad_length` as an
+  imported function the Ruby DLL does not export.
+- NOT done, and why: defining `_MSC_VER` for MinGW was tried and
+  reverted — it breaks MinGW's own headers (`unknwnbase.h` /
+  `servprov.h` parse errors, `EM_*` macros missing from MinGW
+  `float.h`). Do not reintroduce it.
+
+Known differences vs the MSVC build: MinGW links the UCRT (`msvcrt.dll`
+in the import table) while MSVC links `vcruntime140`/`ucrtbase`;
+`msp_lib.so` is ~1.3 MB stripped (vs ~0.6 MB MSVC, untested). The
+`newton.dll` export table was verified byte-identical to the old
+MSVC-built one (985 symbols). Runtime behaviour on real SketchUp is
+still unverified — see §7.
+
 ## 5. Packaging
 
 ```bash

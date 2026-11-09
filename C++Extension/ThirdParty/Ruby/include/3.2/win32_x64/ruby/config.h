@@ -200,4 +200,25 @@
 #define RUBY_PLATFORM "x64-mswin64_140"
 #define RUBY_SITEARCH "x64-vcruntime140"
 #define USE_MJIT 0
+
+#ifdef __MINGW32__
+/* MSPhysics port: MinGW-w64 cross-build fix (see PORTING.md).
+   This config.h was generated for MSVC (VS2022, vcruntime140). Three of
+   its macros are wrong or missing when the same headers are compiled
+   with GCC targeting Windows: */
+#undef HAVE___ASSUME
+/* MSVC-only intrinsic; GCC has no __assume. Without this, Ruby's
+   RBIMPL_ASSUME expands to __assume and every translation unit fails. */
+#define HAVE_STRUCT_TIMEZONE 1
+/* MinGW's time.h already defines struct timezone; Ruby's missing.h
+   must not redefine it. */
+#define HAVE_BUILTIN___BUILTIN_CONSTANT_P 1
+#define HAVE_STMT_AND_DECL_IN_EXPR 1
+/* GCC has __builtin_constant_p and statement expressions, so Ruby's
+   rb_varargs_argc_check macro (used by rb_funcall/rb_yield_values)
+   is defined. HAVE_BUILTIN___BUILTIN_CHOOSE_EXPR_CONSTANT_P is
+   deliberately NOT defined: its branch would declare
+   rb_varargs_bad_length as an imported function, which the Ruby DLL
+   does not export for this build. */
+#endif
 #endif /* INCLUDE_RUBY_CONFIG_H */

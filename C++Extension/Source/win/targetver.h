@@ -6,7 +6,12 @@
 // set the _WIN32_WINNT macro to the platform you wish to support before including SDKDDKVer.h.
 
 //#include <SDKDDKVer.h>
+#ifndef __MINGW32__
+// MinGW-w64 does not ship WinSDKVer.h; _WIN32_WINNT is set by the build
+// (-D_WIN32_WINNT=0x0A00) or by the #define below, so the include is
+// unnecessary there. MSVC keeps the original include.
 #include <WinSDKVer.h>
+#endif
 
 //#ifndef _WIN32_WINNT
 	#define _WIN32_WINNT 0x0A00 /* Windows 10 (was 0x0501 / Windows XP).
