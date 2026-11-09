@@ -1,0 +1,11 @@
+RubyExtension/MSPhysics.rb
+RubyExtension/MSPhysics/*.rb
+  README.md \
+  LICENCE.txt \
+  CHANGELOG.md \
+  TODO.md \
+  FAQ.md \
+  ScriptOverview.md \
+  ScriptExamples.md \
+  ControllersOverview.md
+-p YardTemplates
