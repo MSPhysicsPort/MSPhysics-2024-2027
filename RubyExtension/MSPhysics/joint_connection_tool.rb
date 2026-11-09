@@ -287,11 +287,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
       ids = body.get_attribute('MSPhysics Body', 'Connected Joints')
       ids = [] unless ids.is_a?(Array)
       ids_set = ::Set.new
-      if Sketchup.version.to_i < 14
-        ids.each { |id| ids_set.insert(id) if id.is_a?(Integer) }
-      else
-        ids.each { |id| ids_set.add(id) if id.is_a?(Integer) }
-      end
+      ids.each { |id| ids_set.add(id) if id.is_a?(Integer) }
       ids_set
     end
 
@@ -308,11 +304,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
     # @return [Set<Integer>] The new joint ids of a group/component.
     def connect_joint_id(body, id)
       ids = get_connected_joint_ids(body)
-      if Sketchup.version.to_i < 14
-        ids.insert(id)
-      else
-        ids.add(id)
-      end
+      ids.add(id)
       body.set_attribute('MSPhysics Body', 'Connected Joints', ids.to_a)
       ids
     end
@@ -339,11 +331,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
       if ids.include?(id)
         ids.delete(id)
       else
-        if Sketchup.version.to_i < 14
-          ids.insert(id)
-        else
-          ids.add(id)
-        end
+        ids.add(id)
       end
       body.set_attribute('MSPhysics Body', 'Connected Joints', ids.to_a)
       ids
@@ -538,7 +526,6 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
   end
 
   def note(view, message)
-    return if Sketchup.version.to_i < 16
     @note[:time] = Time.now
     @note[:text] = message
     sx = message.length * @text_opts[:size] * @text_opts[:hratio] + @text_opts[:padding] * 2
@@ -552,10 +539,6 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
   end
 
   def warn(view, message)
-    if Sketchup.version.to_i < 16
-      ::UI.beep
-      return
-    end
     @warn[:time] = Time.now
     @warn[:text] = message
     sx = message.length * @text_opts[:size] * @text_opts[:hratio] + @text_opts[:padding] * 2
@@ -573,8 +556,10 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
   end
 
   def update_cursor
-    @control_down = AMS::Keyboard.control_down?
-    @shift_down = AMS::Keyboard.shift_down?
+    # NOTE (porting 2024-2027): modifier state now comes from the native
+    # Tool onKeyDown/onKeyUp handlers below, not AMS polling.
+    @control_down = false if @control_down.nil?
+    @shift_down = false if @shift_down.nil?
     if @control_down && @shift_down
       @cursor_id = MSPhysics::CURSORS[:select_plus_minus]
     elsif @control_down
@@ -589,7 +574,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
   def process_connection(body, joint)
     op = 'MSPhysics - Connecting Joint'
     model = Sketchup.active_model
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     id = joint.get_attribute('MSPhysics Joint', 'ID', nil)
     if !id.is_a?(Integer)
       id = JointTool.generate_uniq_id
@@ -609,7 +594,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
   def process_connection_multiple(body, joint, instances)
     op = 'MSPhysics - Connecting Joint to Multiple'
     model = Sketchup.active_model
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     id = joint.get_attribute('MSPhysics Joint', 'ID', nil)
     if !id.is_a?(Integer)
       id = JointTool.generate_uniq_id
@@ -1174,7 +1159,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
           model.selection.add(path[0])
           menu.add_item('Clear Ignore Flag') {
             op = 'MSPhysics - Clear Ignore Flag'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             path[0].delete_attribute('MSPhysics Body', 'Ignore')
             model.commit_operation
             data = self.class.get_connection_data(false)
@@ -1188,7 +1173,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
           if id.is_a?(Integer)
             menu.add_item('Disconnect all Bodies') {
               op = 'MSPhysics - Disconnect all Bodies'
-              Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+              model.start_operation(op, true, false, false)
               @fbdata.each { |body, data|
                 if data[0].include?(id)
                   data[0].delete(id)
@@ -1203,7 +1188,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
           model.selection.add(path[0])
           menu.add_item('Disconnect all Joints') {
             op = 'MSPhysics - Disconnect all Joints'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             path[0].delete_attribute('MSPhysics Body', 'Connected Joints')
             model.commit_operation
             bdata = @fbdata[path[0]]
@@ -1219,7 +1204,7 @@ class MSPhysics::JointConnectionTool < MSPhysics::Entity
         if id.is_a?(Integer)
           menu.add_item('Disconnect all Bodies') {
             op = 'MSPhysics - Disconnect all Bodies'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             @fbdata.each { |body, data|
               if data[0].include?(id)
                 data[0].delete(id)

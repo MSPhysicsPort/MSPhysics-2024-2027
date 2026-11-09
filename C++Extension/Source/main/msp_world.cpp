@@ -35,6 +35,48 @@ const dFloat MSP::World::MAX_TIMESTEP(1.0f / 30.0f);
 */
 
 std::map<const NewtonWorld*, MSP::World::WorldData*> MSP::World::valid_worlds;
+VALUE MSP::World::s_pending_destructor_procs = Qnil;
+
+MSP::World::WorldData* MSP::World::c_get_world_data(const NewtonWorld* world) {
+    if (world == nullptr)
+        return nullptr;
+    return reinterpret_cast<WorldData*>(NewtonWorldGetUserData(world));
+}
+
+void MSP::World::c_register_gc_root(WorldData* world_data, const void* object, VALUE user_data, VALUE group, VALUE destructor_proc) {
+    if (world_data == nullptr || object == nullptr)
+        return;
+    rb_hash_aset(world_data->m_gc_roots,
+        rb_ull2inum(reinterpret_cast<unsigned long long>(object)),
+        rb_ary_new3(3, user_data, group, destructor_proc));
+}
+
+void MSP::World::c_unregister_gc_root(WorldData* world_data, const void* object) {
+    if (world_data == nullptr || object == nullptr)
+        return;
+    rb_hash_delete(world_data->m_gc_roots,
+        rb_ull2inum(reinterpret_cast<unsigned long long>(object)));
+}
+
+void MSP::World::c_enqueue_destructor_proc(VALUE v_proc) {
+    // Only appends to a GC-registered Array; no user Ruby code runs here,
+    // so this is safe to call from a Newton callback.
+    if (v_proc != Qnil && s_pending_destructor_procs != Qnil)
+        rb_ary_push(s_pending_destructor_procs, v_proc);
+}
+
+void MSP::World::c_run_pending_destructor_procs() {
+    // Runs ONLY on the Ruby thread (called from rbf_* entry points).
+    // Loops until empty so a destructor Proc that destroys another body
+    // (and enqueues its Proc) is also honoured in the same drain.
+    if (s_pending_destructor_procs == Qnil)
+        return;
+    while (RARRAY_LEN(s_pending_destructor_procs) > 0) {
+        VALUE v_proc = rb_ary_shift(s_pending_destructor_procs);
+        if (v_proc != Qnil)
+            rb_rescue2(RUBY_METHOD_FUNC(Util::call_proc), v_proc, RUBY_METHOD_FUNC(Util::rescue_proc), Qnil, rb_eException, (VALUE)0);
+    }
+}
 
 
 /*
@@ -48,9 +90,14 @@ void MSP::World::destructor_callback(const NewtonWorld* const world) {
     if (valid_worlds.find(world) != valid_worlds.end())
         valid_worlds.erase(world);
     c_clear_touch_events(world);
-    // Call world destructor procedure
+    // Do NOT call the world destructor Proc here: this is a Newton callback
+    // that may run without the GVL / outside the Ruby thread, and a Proc can
+    // run arbitrary Ruby code. Enqueue it; it runs on the Ruby thread at
+    // the next rbf_update / rbf_update_async / rbf_destroy drain (see
+    // c_run_pending_destructor_procs). The queue is process-lifetime, so it
+    // survives `delete world_data` below.
     if (rb_ary_entry(world_data->m_user_info, 0) != Qnil)
-        rb_rescue2(RUBY_METHOD_FUNC(Util::call_proc), rb_ary_entry(world_data->m_user_info, 0), RUBY_METHOD_FUNC(Util::rescue_proc), Qnil, rb_eException, (VALUE)0);
+        c_enqueue_destructor_proc(rb_ary_entry(world_data->m_user_info, 0));
     for (std::set<MSP::Gear::GearData*>::iterator it = MSP::Gear::s_valid_gears.begin(); it != MSP::Gear::s_valid_gears.end();) {
         MSP::Gear::GearData* gear_data = *it;
         ++it;
@@ -504,6 +551,10 @@ VALUE MSP::World::rbf_create(VALUE self) {
 VALUE MSP::World::rbf_destroy(VALUE self, VALUE v_world) {
     const NewtonWorld* world = c_value_to_world(v_world);
     NewtonDestroy(world);
+    // NewtonDestroy ran destructor_callback, which only enqueued the world
+    // destructor Proc. This call runs on the Ruby thread, so drain it now
+    // instead of waiting for the next update.
+    c_run_pending_destructor_procs();
     return Qnil;
 }
 
@@ -521,6 +572,13 @@ VALUE MSP::World::rbf_get_max_threads_count(VALUE self, VALUE v_world) {
 VALUE MSP::World::rbf_set_max_threads_count(VALUE self, VALUE v_world, VALUE v_count) {
     const NewtonWorld* world = c_value_to_world(v_world);
     WorldData* world_data = reinterpret_cast<WorldData*>(NewtonWorldGetUserData(world));
+    // NOTE: WorldData::m_max_threads defaults to 1 and must stay 1 until the
+    // GVL problem is solved. Newton worker threads do not hold the GVL, so
+    // any Ruby API call from a Newton callback (force/torque, transform,
+    // destructor) is undefined behaviour with threads > 1. Only the two
+    // destructor callbacks touch Ruby at all, and they now only enqueue
+    // Procs -- but the remaining rb_hash_* bookkeeping in those callbacks
+    // still assumes the calling thread is the Ruby thread, i.e. threads == 1.
     world_data->m_max_threads = Util::clamp_int(Util::value_to_int(v_count), 1, NewtonGetMaxThreadsCount(world));
     NewtonSetThreadsCount(world, world_data->m_max_threads);
     return Qnil;
@@ -535,6 +593,9 @@ VALUE MSP::World::rbf_destroy_all_bodies(VALUE self, VALUE v_world) {
     const NewtonWorld* world = c_value_to_world(v_world);
     int count = NewtonWorldGetBodyCount(world);
     NewtonDestroyAllBodies(world);
+    // Body destructor callbacks only enqueue their Procs; drain them now
+    // on the Ruby thread.
+    c_run_pending_destructor_procs();
     return Util::to_value(count);
 }
 
@@ -559,9 +620,18 @@ VALUE MSP::World::rbf_update(VALUE self, VALUE v_world, VALUE v_timestep) {
     c_disconnect_flagged_joints(world);
     c_process_touch_events(world);
     world_data->m_time += timestep;
+    // Run any destructor Procs deferred out of Newton callbacks during this
+    // update, now that we are back on the Ruby thread.
+    c_run_pending_destructor_procs();
     return Util::to_value(timestep);
 }
 
+// NOTE: despite the name, this is SYNCHRONOUS: it calls NewtonUpdate
+// directly on the calling (Ruby) thread and holds the GVL for the whole
+// step, exactly like rbf_update. There is no rb_thread_call_without_gvl
+// here and no background thread. Do not treat it as async; a true async
+// implementation would need rb_thread_call_without_gvl(NewtonUpdate) plus
+// a ban on all Ruby calls from Newton callbacks.
 VALUE MSP::World::rbf_update_async(VALUE self, VALUE v_world, VALUE v_timestep) {
     const NewtonWorld* world = c_value_to_world(v_world);
     dFloat timestep = Util::clamp_float(Util::value_to_dFloat(v_timestep), MIN_TIMESTEP, MAX_TIMESTEP);
@@ -573,6 +643,8 @@ VALUE MSP::World::rbf_update_async(VALUE self, VALUE v_world, VALUE v_timestep) 
     c_disconnect_flagged_joints(world);
     c_process_touch_events(world);
     world_data->m_time += timestep;
+    // Drain destructor Procs deferred out of Newton callbacks (see rbf_update).
+    c_run_pending_destructor_procs();
     return Util::to_value(timestep);
 }
 
@@ -1015,6 +1087,11 @@ VALUE MSP::World::rbf_clear_matrix_change_record(VALUE self, VALUE v_world) {
 */
 
 void MSP::World::init_ruby(VALUE mNewton) {
+    // Process-lifetime queue for destructor Procs deferred out of Newton
+    // callbacks. Registered as a GC root once; intentionally never
+    // unregistered (same pattern as Particle::s_reg_symbols).
+    s_pending_destructor_procs = rb_ary_new();
+    rb_gc_register_address(&s_pending_destructor_procs);
     VALUE mWorld = rb_define_module_under(mNewton, "World");
 
     rb_define_module_function(mWorld, "is_valid?", VALUEFUNC(MSP::World::rbf_is_valid), 1);

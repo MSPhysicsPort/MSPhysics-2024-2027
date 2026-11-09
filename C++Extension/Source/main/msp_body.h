@@ -69,6 +69,16 @@ public:
         dFloat m_magnet_range;
         dFloat m_magnet_strength;
         bool m_magnetic;
+        // GC SAFETY: these three VALUEs live in a C++ heap struct, invisible
+        // to Ruby GC. They are kept alive ONLY via WorldData::m_gc_roots
+        // (registered GC root; keyed by body address) and the legacy
+        // m_body_destructors / m_body_user_datas / m_body_groups Hashes
+        // reachable via WorldData::m_user_info. Treat these fields as
+        // non-owning cached copies: every setter must update the roots
+        // (World::c_register_gc_root), and Body::destructor_callback must
+        // unregister them before `delete body_data`. Do NOT add a new VALUE
+        // field here without registering it the same way. No TypedData is
+        // involved: the pointer<->Integer design is kept (see audit §D).
         VALUE m_destructor_proc;
         VALUE m_user_data;
         VALUE m_group;

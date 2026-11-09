@@ -1,7 +1,6 @@
 # @since 1.0.0
 module MSPhysics::ControlPanel
 
-  USE_HTML_DIALOG = ::Sketchup.version.to_i > 16 ? true : false
   TITLE = 'MSPhysics Control Panel'
   FADE_DURATION = 2.0
   FADE_DELAY = 2.0
@@ -13,6 +12,8 @@ module MSPhysics::ControlPanel
   @size = [0,0]
   @border_size = [0,0]
   @sliders = {}
+  @slider_values = {}
+  @slider_html_generated = {}
   @mouse_over = false
   @init_called = false
   @fade_time = nil
@@ -32,35 +33,29 @@ module MSPhysics::ControlPanel
       return if @dialog
 
       iws = [300, 300]
-      if USE_HTML_DIALOG
-        @dialog = ::UI::HtmlDialog.new({
-          :dialog_title => TITLE,
-          :preferences_key => TITLE,
-          :scrollable => false,
-          :resizable => true,
-          :width => iws.x,
-          :height => iws.y,
-          :left => 800,
-          :top => 600,
-          :min_width => 50,
-          :min_height => 50,
-          :max_width => -1,
-          :max_height => -1,
-          :style => ::UI::HtmlDialog::STYLE_DIALOG
-        })
-      else
-        @dialog = ::UI::WebDialog.new(TITLE, false, TITLE, iws.x, iws.y, 800, 600, true)
-      end
+      @dialog = ::UI::HtmlDialog.new({
+        :dialog_title => TITLE,
+        :preferences_key => TITLE,
+        :scrollable => false,
+        :resizable => true,
+        :width => iws.x,
+        :height => iws.y,
+        :left => 800,
+        :top => 600,
+        :min_width => 50,
+        :min_height => 50,
+        :max_width => -1,
+        :max_height => -1,
+        :style => ::UI::HtmlDialog::STYLE_DIALOG
+      })
 
       # Callbacks
       @dialog.add_action_callback('init') { |acs, params|
         unless @init_called
           @init_called = true
-          ui_scale = ::Sketchup.version.to_i > 16 ? ::UI.scale_factor : 1.0
-          ds = eval(params)
-          for i in ds.size
-            data[i] *= ui_scale
-          end
+          ui_scale = ::UI.scale_factor
+          ds = AMS.parse_json_value(params, [])
+          ds.each_index { |i| ds[i] = ds[i].to_f * ui_scale }
           #@border_size = [iws.x - ds.x, iws.y - ds.y]
           if AMS::IS_PLATFORM_WINDOWS && @handle
             ws = AMS::Window.get_size(@handle)
@@ -78,7 +73,7 @@ module MSPhysics::ControlPanel
       }
 
       @dialog.add_action_callback('size_changed') { |acs, params|
-        @size = eval(params)
+        @size = AMS.parse_json_value(params, @size)
         update_placement
       }
 
@@ -116,21 +111,25 @@ module MSPhysics::ControlPanel
         execute_js(cmd)
       }
       @dialog.add_action_callback('test_result') { |acs, params|
-        @test_result = eval(params)
+        @test_result = AMS.parse_json_value(params)
+      }
+
+      # Slider values are pushed from JS (HtmlDialog has no
+      # get_element_value); cached here so get_slider_value can answer
+      # synchronously. See js/control_panel.js onChange handler.
+      @dialog.add_action_callback('slider_changed') { |acs, params|
+        id, value = AMS.parse_json_value(params, [nil, nil])
+        @slider_values[id.to_s] = value.to_f if id
       }
 
       # Set content
       dir = ::File.dirname(__FILE__)
-      dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      dir.force_encoding('UTF-8')
       url = ::File.join(dir, 'html/control_panel.html')
       @dialog.set_file(url)
 
       # Show dialog
-      if AMS::IS_PLATFORM_WINDOWS || USE_HTML_DIALOG
-        @dialog.show
-      else
-        @dialog.show_modal
-      end
+      @dialog.show
 
       # Assign the on_close callback. Important: This must be called after
       # showing dialog in order to work on Mac OS X.
@@ -146,11 +145,7 @@ module MSPhysics::ControlPanel
         @init_called = false
         true
       }
-      if USE_HTML_DIALOG
-        @dialog.set_can_close() { do_on_close.call }
-      else
-        @dialog.set_on_close() { do_on_close.call }
-      end
+      @dialog.set_can_close() { do_on_close.call }
 
       # Find dialog window handle
       @handle = AMS::IS_PLATFORM_WINDOWS ? AMS::Sketchup.find_window_by_caption(TITLE) : nil
@@ -242,6 +237,7 @@ module MSPhysics::ControlPanel
         :max => max.to_f,
         :step => step.to_f < 1.0e-3 ? 1.0e-3 : step.to_f
       }
+      @slider_values[cname] = default_value.to_f
       generate_slider_html(name)
       true
     end
@@ -253,6 +249,7 @@ module MSPhysics::ControlPanel
       return false if @sliders[name.to_s].nil?
       degenerate_slider_html(name.to_s)
       @sliders.delete(name.to_s)
+      @slider_values.delete(name.to_s)
       true
     end
 
@@ -261,6 +258,8 @@ module MSPhysics::ControlPanel
     def remove_sliders
       size = @sliders.size
       @sliders.clear
+      @slider_values.clear
+      @slider_html_generated.clear
       execute_js("remove_sliders(); update_size();")
       size
     end
@@ -281,8 +280,10 @@ module MSPhysics::ControlPanel
       cname = name.to_s.gsub(/[\\\"\'\v\n\t\r\f]/, '')
       data = @sliders[cname]
       return unless data
-      res = @dialog.get_element_value("lcrs-" + cname)
-      res.empty? ? data[:default_value] : res.to_f
+      # HtmlDialog has no get_element_value; use the value cached from
+      # the 'slider_changed' callback (default until the first change).
+      value = @slider_values[cname]
+      value.nil? ? data[:default_value] : value.to_f
     end
 
     # Set slider value.
@@ -293,7 +294,8 @@ module MSPhysics::ControlPanel
       return false if @dialog.nil? || !@init_called
       cname = name.to_s.gsub(/[\\\"\'\v\n\t\r\f]/, '')
       data = @sliders[cname]
-      return false if data.nil? || @dialog.get_element_value("lcrs-" + cname).empty?
+      return false if data.nil?
+      @slider_values[cname] = value.to_f
       cmd = "sliders[\"#{cname}\"].setValue(#{value.to_f}); update_slider(\"#{cname}\");"
       execute_js(cmd)
       true
@@ -337,7 +339,8 @@ module MSPhysics::ControlPanel
       cname = name.to_s.gsub(/[\\\"\'\v\n\t\r\f]/, '')
       data = @sliders[cname]
       return false unless data
-      return false unless @dialog.get_element_value("lcrs-" + cname).empty?
+      return false if @slider_html_generated[cname]
+      @slider_html_generated[cname] = true
       cmd = "add_slider(\"#{cname}\", #{data[:default_value]}, #{data[:min]}, #{data[:max]}, #{data[:step]});"
       cmd << "update_size();" if update_size
       execute_js(cmd)
@@ -347,7 +350,8 @@ module MSPhysics::ControlPanel
     def degenerate_slider_html(name, update_size = true)
       return false if @dialog.nil? || !@init_called
       cname = name.to_s.gsub(/[\\\"\'\v\n\t\r\f]/, '')
-      return false if @dialog.get_element_value("lcrs-" + cname).empty?
+      return false unless @slider_html_generated[cname]
+      @slider_html_generated.delete(cname)
       cmd = "remove_slider(\"#{cname}\");"
       cmd << "update_size();" if update_size
       execute_js(cmd)
@@ -356,7 +360,7 @@ module MSPhysics::ControlPanel
 
     def update_placement
       return false unless @dialog
-      ui_scale = ::Sketchup.version.to_i > 16 ? ::UI.scale_factor : 1.0
+      ui_scale = ::UI.scale_factor
       wsx = @border_size.x + @size.x * ui_scale
       wsy = @border_size.y + @size.y * ui_scale
       if AMS::IS_PLATFORM_WINDOWS && @handle

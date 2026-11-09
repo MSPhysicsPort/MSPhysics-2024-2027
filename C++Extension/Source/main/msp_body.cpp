@@ -61,14 +61,22 @@ void MSP::Body::destructor_callback(const NewtonBody* const body) {
     c_clear_non_collidable_bodies(body);
     if (s_valid_bodies.find(body) != s_valid_bodies.end())
         s_valid_bodies.erase(body);
-    if (body_data->m_group != Qnil && world_data->m_group_to_body_map.find(body_data->m_group) != world_data->m_group_to_body_map.end())
-        world_data->m_group_to_body_map.erase(body_data->m_group);
+    // Group map key is rb_obj_id(group), not the group VALUE itself.
+    if (body_data->m_group != Qnil && world_data->m_group_to_body_map.find(rb_obj_id(body_data->m_group)) != world_data->m_group_to_body_map.end())
+        world_data->m_group_to_body_map.erase(rb_obj_id(body_data->m_group));
+    // Do NOT call the destructor Proc here: this is a Newton callback that
+    // may run without the GVL / outside the Ruby thread, and a Proc can run
+    // arbitrary Ruby code. Enqueue it; it runs on the Ruby thread at the
+    // next rbf_update / rbf_update_async / rbf_destroy drain. The Proc
+    // stays alive until then via the m_body_destructors Hash / m_gc_roots
+    // entries, which are only deleted below after the enqueue.
     if (body_data->m_destructor_proc != Qnil)
-        rb_rescue2(RUBY_METHOD_FUNC(Util::call_proc), body_data->m_destructor_proc, RUBY_METHOD_FUNC(Util::rescue_proc), Qnil, rb_eException, (VALUE)0);
+        MSP::World::c_enqueue_destructor_proc(body_data->m_destructor_proc);
     VALUE v_body = c_body_to_value(body);
     rb_hash_delete(world_data->m_body_destructors, v_body);
     rb_hash_delete(world_data->m_body_user_datas, v_body);
     rb_hash_delete(world_data->m_body_groups, v_body);
+    MSP::World::c_unregister_gc_root(world_data, body);
     delete body_data;
 }
 
@@ -618,15 +626,22 @@ VALUE MSP::Body::rbf_create(VALUE self, VALUE v_world, VALUE v_collision, VALUE 
     VALUE v_body = c_body_to_value(body);
 
     if (v_group != Qnil) {
-        world_data->m_group_to_body_map[v_group] = body;
+        world_data->m_group_to_body_map[rb_obj_id(v_group)] = body;
         rb_hash_aset(world_data->m_body_groups, v_body, v_group);
     }
+    // Register the body's VALUE fields as GC roots (user_data/destructor
+    // start as Qnil; setters re-register with the real values).
+    MSP::World::c_register_gc_root(world_data, body, Qnil, v_group, Qnil);
     return v_body;
 }
 
 VALUE MSP::Body::rbf_destroy(VALUE self, VALUE v_body) {
     const NewtonBody* body = c_value_to_body(v_body);
     NewtonDestroyBody(body);
+    // NewtonDestroyBody ran destructor_callback, which only enqueued the
+    // body destructor Proc. This call runs on the Ruby thread, so drain
+    // it now instead of waiting for the next update.
+    MSP::World::c_run_pending_destructor_procs();
     return Qnil;
 }
 
@@ -1735,9 +1750,13 @@ VALUE MSP::Body::rbf_copy(VALUE self, VALUE v_body, VALUE v_matrix, VALUE v_reap
     VALUE v_new_body = c_body_to_value(new_body);
 
     if (v_group != Qnil) {
-        world_data->m_group_to_body_map[v_group] = new_body;
+        world_data->m_group_to_body_map[rb_obj_id(v_group)] = new_body;
         rb_hash_aset(world_data->m_body_groups, v_new_body, v_group);
     }
+    // Like a fresh body, the copy starts with Qnil user_data/destructor
+    // (copies do not inherit them); register its (currently empty) roots
+    // so later setters have an entry to update.
+    MSP::World::c_register_gc_root(world_data, new_body, Qnil, v_group, Qnil);
 
     NewtonBodySetMaterialGroupID(new_body, body_data->m_material_id);
 
@@ -1786,6 +1805,7 @@ VALUE MSP::Body::rbf_set_destructor_proc(VALUE self, VALUE v_body, VALUE v_proc)
     if (v_proc == Qnil || rb_class_of(v_proc) == rb_cProc) {
         body_data->m_destructor_proc = v_proc;
         rb_hash_aset(world_data->m_body_destructors, c_body_to_value(body), v_proc);
+        MSP::World::c_register_gc_root(world_data, body, body_data->m_user_data, body_data->m_group, v_proc);
     }
     else
         rb_raise(rb_eTypeError, "Expected nil or a Proc object!");
@@ -1805,6 +1825,7 @@ VALUE MSP::Body::rbf_set_user_data(VALUE self, VALUE v_body, VALUE v_user_data) 
     MSP::World::WorldData* world_data = reinterpret_cast<MSP::World::WorldData*>(NewtonWorldGetUserData(world));
     body_data->m_user_data = v_user_data;
     rb_hash_aset(world_data->m_body_user_datas, c_body_to_value(body), v_user_data);
+    MSP::World::c_register_gc_root(world_data, body, v_user_data, body_data->m_group, body_data->m_destructor_proc);
     return Qnil;
 }
 
@@ -2005,7 +2026,7 @@ VALUE MSP::Body::rbf_get_group(VALUE self, VALUE v_body) {
 VALUE MSP::Body::rbf_get_body_by_group(VALUE self, VALUE v_world, VALUE v_group) {
     const NewtonWorld* world = MSP::World::c_value_to_world(v_world);
     MSP::World::WorldData* world_data = reinterpret_cast<MSP::World::WorldData*>(NewtonWorldGetUserData(world));
-    std::map<VALUE, const NewtonBody*>::iterator it = world_data->m_group_to_body_map.find(v_group);
+    std::map<VALUE, const NewtonBody*>::iterator it = world_data->m_group_to_body_map.find(rb_obj_id(v_group));
     if (it == world_data->m_group_to_body_map.end())
         return Qnil;
     else
@@ -2015,7 +2036,7 @@ VALUE MSP::Body::rbf_get_body_by_group(VALUE self, VALUE v_world, VALUE v_group)
 VALUE MSP::Body::rbf_get_body_data_by_group(VALUE self, VALUE v_world, VALUE v_group) {
     const NewtonWorld* world = MSP::World::c_value_to_world(v_world);
     MSP::World::WorldData* world_data = reinterpret_cast<MSP::World::WorldData*>(NewtonWorldGetUserData(world));
-    std::map<VALUE, const NewtonBody*>::iterator it = world_data->m_group_to_body_map.find(v_group);
+    std::map<VALUE, const NewtonBody*>::iterator it = world_data->m_group_to_body_map.find(rb_obj_id(v_group));
     if (it == world_data->m_group_to_body_map.end())
         return Qnil;
     else {

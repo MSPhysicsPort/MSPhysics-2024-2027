@@ -77,6 +77,13 @@ public:
         dMatrix m_local_matrix2;
         dVector m_tension1;
         dVector m_tension2;
+        // GC SAFETY: these VALUEs live in a C++ heap struct, invisible to
+        // Ruby GC. They are kept alive ONLY via WorldData::m_gc_roots
+        // (registered GC root owned by the joint's world; keyed by
+        // JointData address). Treat them as non-owning cached copies:
+        // Joint::c_create registers them, rbf_set_user_data re-registers
+        // them, Joint::c_destroy unregisters them. Do NOT add a new VALUE
+        // field here without registering it the same way.
         VALUE m_user_data;
         VALUE m_group;
         void* m_cj_data;
@@ -127,6 +134,12 @@ public:
 
     // Variables
     static std::map<JointData*, bool> s_valid_joints;
+    // Group -> joints index. The key is rb_obj_id(group): an Integer
+    // immediate, NOT a heap VALUE. Group objects are therefore never stored
+    // here as GC-managed pointers and no GC root is needed for the keys; a
+    // collected group simply stops matching lookups. Entries are removed in
+    // Joint::c_destroy (and the whole map is keyed off the joint's own
+    // lifetime, not the group's).
     static std::map<VALUE, std::map<JointData*, bool>> s_map_group_to_joints;
 
     // Callback Functions

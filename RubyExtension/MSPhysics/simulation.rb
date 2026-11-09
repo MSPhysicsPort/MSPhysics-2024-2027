@@ -497,6 +497,10 @@ class MSPhysics::Simulation < MSPhysics::Entity
   # @note Windows only!
   def view_full_screen(state, include_floating_windows = true)
     return false unless AMS::IS_PLATFORM_WINDOWS
+    # NOTE (porting 2024-2027): fullscreen via Win32 is degraded to a
+    # no-op (see MSPhysics/DEGRADED.md); the AMS::Sketchup calls below
+    # only record the degradation. There is no SketchUp API for hiding
+    # the menu/toolbar/status bar chrome.
     AMS::Sketchup.show_toolbar_container(5, !state, false)
     AMS::Sketchup.show_scenes_bar(!state, false)
     AMS::Sketchup.show_status_bar(!state, false)
@@ -824,10 +828,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
         test = MSPhysics::SCRIPT_NAME + ':'
         err_message = err.message
         err_backtrace = err.backtrace
-        unless AMS::IS_RUBY_VERSION_18
-          err_message.force_encoding('UTF-8')
-          err_backtrace.each { |i| i.force_encoding('UTF-8') }
-        end
+        err_message.force_encoding('UTF-8')
+        err_backtrace.each { |i| i.force_encoding('UTF-8') }
         err_backtrace.each { |location|
           if location.include?(test)
             ref = location
@@ -1880,10 +1882,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
   rescue Exception => err
     err_message = err.message
     err_backtrace = err.backtrace
-    unless AMS::IS_RUBY_VERSION_18
-      err_message.force_encoding('UTF-8')
-      err_backtrace.each { |i| i.force_encoding('UTF-8') }
-    end
+    err_message.force_encoding('UTF-8')
+    err_backtrace.each { |i| i.force_encoding('UTF-8') }
     puts "An exception occurred while updating particles.\n#{err.class}:\n#{err_message}\nTrace:\n#{err_backtrace.join("\n")}"
   end
 
@@ -2297,7 +2297,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           value = @controller_context.eval_script(data[:controller], CONTROLLER_NAME, 0)
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while evaluating thruster controller!\nController:\n#{data[:controller]}\n#{err.class}:\n#{err_message}"
         end
         return false unless self.class.active?
@@ -2317,7 +2317,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           end
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while assigning thruster controller!\nController:\n#{data[:controller]}\n#{err.class}:\n#{err_message}"
         end
         false
@@ -2330,7 +2330,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           value = @controller_context.eval_script(data[:controller], CONTROLLER_NAME, 0)
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while evaluating emitter controller!\nController:\n#{data[:controller]}\n#{err.class}:\n#{err_message}"
         end
         return false unless self.class.active?
@@ -2358,7 +2358,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           end
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while assigning emitter controller!\nController:\n#{data[:controller]}\n#{err.class}:\n#{err_message}"
         end
         false
@@ -2393,7 +2393,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           value = @controller_context.eval_script(controller, CONTROLLER_NAME, 0)
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while evaluating joint controller!\nController:\n#{controller}\n#{err.class}:\n#{err_message}"
         end
         return false unless self.class.active?
@@ -2414,7 +2414,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
           end
         rescue Exception => err
           err_message = err.message
-          err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+          err_message.force_encoding('UTF-8')
           puts "An exception occurred while assigning joint controller!\nController:\n#{controller}\n#{err.class}:\n#{err_message}"
         end
         false
@@ -3114,10 +3114,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
       rescue Exception => err
         err_message = err.message
         err_backtrace = err.backtrace
-        unless AMS::IS_RUBY_VERSION_18
-          err_message.force_encoding('UTF-8')
-          err_backtrace.each { |i| i.force_encoding('UTF-8') }
-        end
+        err_message.force_encoding('UTF-8')
+        err_backtrace.each { |i| i.force_encoding('UTF-8') }
         puts "An exception occurred while creating a joint from #{jinfo[0]}!\n#{err.class}:\n#{err_message}\nTrace:\n#{err_backtrace.join("\n")}"
       end
     }
@@ -3144,7 +3142,7 @@ class MSPhysics::Simulation < MSPhysics::Entity
     end
     # Wrap operations
     op = 'MSPhysics Simulation'
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     # Record starting selection
     model.selection.each { |e|
       if (e.is_a?(Sketchup::Group) || e.is_a?(Sketchup::ComponentInstance)) && e.parent == model
@@ -3172,8 +3170,9 @@ class MSPhysics::Simulation < MSPhysics::Entity
     else
       opts[:height] = camera.height
     end
-    # Activate observer
-    AMS::Sketchup.add_observer(self) if AMS::IS_PLATFORM_WINDOWS
+    # NOTE (porting 2024-2027): the AMS Win32 window observer is gone;
+    # key/mouse events now arrive via native Tool callbacks (onKeyDown,
+    # onKeyUp, onMouse*, ...). See onKeyDown above.
     # Activate page observer (for OS X)
     @frame_change_observer_id = ::Sketchup::Pages.add_frame_change_observer(self)
     # Configure Settings
@@ -3213,10 +3212,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
           index = ents.index(entity)
           err_message = err.message
           err_backtrace = err.backtrace
-          unless AMS::IS_RUBY_VERSION_18
-            err_message.force_encoding('UTF-8')
-            err_backtrace.each { |i| i.force_encoding('UTF-8') }
-          end
+          err_message.force_encoding('UTF-8')
+          err_backtrace.each { |i| i.force_encoding('UTF-8') }
           #~ puts "Entity at index #{index} was not added to simulation:\n#{err.class}:\n#{err_message}\nTrace:\n#{err_backtrace.join("\n")}\n\n"
           puts "Entity at index #{index} was not added to simulation:\n#{err.class}:\n#{err_message}\n#{err.backtrace.join("\n")}\n"
         end
@@ -3388,8 +3385,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
     MSPhysics::ControlPanel.remove_sliders
     # Clear variables of the common context
     MSPhysics::CommonContext.reset_variables
-    # Remove observer
-    AMS::Sketchup.remove_observer(self) if AMS::IS_PLATFORM_WINDOWS
+    # Forget any held keys (AMS::Keyboard polling state).
+    AMS::Keyboard.clear_all
     # Deactivate page observer (for OS X)
     if @frame_change_observer_id
       ::Sketchup::Pages.remove_frame_change_observer(@frame_change_observer_id)
@@ -3465,10 +3462,8 @@ class MSPhysics::Simulation < MSPhysics::Entity
     if @error
       err_message = @error.message
       err_backtrace = @error.backtrace
-      unless AMS::IS_RUBY_VERSION_18
-        err_message.force_encoding('UTF-8')
-        err_backtrace.each { |i| i.force_encoding('UTF-8') }
-      end
+      err_message.force_encoding('UTF-8')
+      err_backtrace.each { |i| i.force_encoding('UTF-8') }
       msg = "MSPhysics Simulation has been aborted due to an error!\n#{@error.class}:\n#{err_message}"
       puts "#{msg}\nTrace:\n#{err_backtrace.join("\n")}\n\n"
       ::UI.messagebox(msg)
@@ -3543,6 +3538,30 @@ class MSPhysics::Simulation < MSPhysics::Entity
 
   def onMouseLeave(view)
     @mouse_over = false
+  end
+
+  # Native keyboard events (replaces the AMS Win32 window-procedure
+  # observer). Feeds AMS::Keyboard's polling state (used by key-nav and
+  # user scripts) and forwards presses to the AMS-style swp_on_key_*
+  # handlers, which dispatch onKeyDown/onKeyUp/onKeyExtended script events.
+  def onKeyDown(key, repeat, flags, view)
+    AMS::Keyboard.note_key_down(key, flags)
+    return if repeat != 1
+    name = AMS::Keyboard.key_name_for_code(key)
+    char = name.length == 1 ? name : ''
+    if %w[left right up down pageup pagedown home end insert delete].include?(name) || name.start_with?('numpad')
+      swp_on_key_extended(name, 1, char)
+    else
+      swp_on_key_down(name, 1, char)
+    end
+  end
+
+  def onKeyUp(key, repeat, flags, view)
+    AMS::Keyboard.note_key_up(key, flags)
+    return if repeat != 1
+    name = AMS::Keyboard.key_name_for_code(key)
+    char = name.length == 1 ? name : ''
+    swp_on_key_up(name, 1, char)
   end
 
   def onMouseMove(flags, x, y, view)
@@ -3751,19 +3770,17 @@ class MSPhysics::Simulation < MSPhysics::Entity
   end
 
   def getExtents
-    if Sketchup.version.to_i > 6
-      Sketchup.active_model.entities.each { |e|
-        next if e.is_a?(Sketchup::Text) && !e.has_leader?
-        if e.visible? && e.layer.visible?
-          ebb = e.bounds
-          if ebb.valid?
-            c = ebb.center
-            next if c.x.abs > 1.0e10 || c.y.abs > 1.0e10 || c.z.abs > 1.0e10
-            @bb.add(ebb)
-          end
+    Sketchup.active_model.entities.each { |e|
+      next if e.is_a?(Sketchup::Text) && !e.has_leader?
+      if e.visible? && e.layer.visible?
+        ebb = e.bounds
+        if ebb.valid?
+          c = ebb.center
+          next if c.x.abs > 1.0e10 || c.y.abs > 1.0e10 || c.z.abs > 1.0e10
+          @bb.add(ebb)
         end
-      }
-    end
+      end
+    }
     @bb.empty? ? Sketchup.active_model.bounds : @bb
   end
 

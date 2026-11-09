@@ -54,6 +54,9 @@ class MSPhysics::BodyContext < MSPhysics::CommonContext
   # @param [String] script_name
   # @param [Integer] line
   def eval_script(script, script_name, line)
+    # NOTE (porting 2024-2027): intentional eval - this executes the
+    # user's own MSPhysics script (a product feature), not JS callback
+    # input. The eval(params) -> JSON.parse migration does not apply here.
     eval(script, binding, script_name, line)
   end
 
@@ -138,10 +141,8 @@ class MSPhysics::BodyContext < MSPhysics::CommonContext
       test = MSPhysics::SCRIPT_NAME + ':'
       err_message = err.message
       err_backtrace = err.backtrace
-      unless AMS::IS_RUBY_VERSION_18
-        err_message.force_encoding('UTF-8')
-        err_backtrace.each { |i| i.force_encoding('UTF-8') }
-      end
+      err_message.force_encoding('UTF-8')
+      err_backtrace.each { |i| i.force_encoding('UTF-8') }
       err_backtrace.each { |location|
         if location.include?(test)
           ref = location

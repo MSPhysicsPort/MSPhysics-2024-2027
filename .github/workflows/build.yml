@@ -1,0 +1,346 @@
+# MSPhysics — GitHub Actions build matrix (SketchUp 2024–2027)
+#
+# EXPECTED BLOCKER — Ruby 3.4 jobs (build-windows-3.4, build-macos-3.4-arm64):
+#   These jobs WILL FAIL until the SketchUp 2027 Ruby 3.4.9 headers and
+#   import libraries are available in the tree (see analysis/04 §3.3):
+#     - Windows: ThirdParty/Ruby/include/3.4 + x64-ucrt-ruby340.lib
+#       (extract from a machine with SU2027 installed, or build Ruby 3.4.9
+#       from source with MSVC 2022 + UCRT), plus the
+#       `Release (3.4)|x64` configuration in the .vcxproj files.
+#     - macOS: Ruby.framework 3.4.9 headers from
+#       SketchUp.app/Contents/Frameworks/Ruby.framework (arm64),
+#       plus the `Ruby 3.4 - 64` target in msp_lib.xcodeproj.
+#   That failure is expected and pre-existing — it is NOT a regression in
+#   this workflow. Once the 3.4 headers/libs land, re-run the 3.4 jobs
+#   with no workflow change.
+#
+# EXPECTED BLOCKER — macOS Xcode targets (build-macos-3.2-*, build-macos-3.4-arm64):
+#   The `Ruby 3.2 - 64` / `Ruby 3.4 - 64` targets do NOT exist yet. The C++
+#   workstream deleted the 32-bit targets but could not safely clone the
+#   whole Xcode object graph as text, so it left comment placeholders at
+#   the top of the PBXNativeTarget section of
+#   C++Extension/Projects/xCode/msp_lib.xcodeproj/project.pbxproj with the
+#   full list of settings to apply when the targets are created by hand in
+#   Xcode. Until that is done, ALL macOS jobs fail (target not found) —
+#   including the 3.2 ones. The macOS Ruby 3.2 framework is also missing
+#   from the tree (lib/mac/ only has 1.8/2.0/2.2/2.5).
+#   Consequence, decided by the implementation coordinator 2026-11-09:
+#   the `package` job currently needs ONLY build-windows-3.2, the one job
+#   that can pass today (VS config + Ruby 3.2 headers both exist), and it
+#   assembles 3.4/macOS artifacts only when present. Revert `needs` to all
+#   five build jobs once the 3.4 headers/libs and the Xcode targets land.
+#
+# Toolchain pins (do NOT float these):
+#   - Windows: windows-2022 runner (MSVC 2022, v143, preinstalled),
+#     Windows SDK 10.0.22621.0 (set in the .vcxproj files).
+#   - macOS: macos-14 runner, Xcode 15.4 pinned via xcode-select below.
+#     The macos-14 runner is ARM64; x86_64 builds are cross-compiles
+#     (clang -arch x86_64) and can only be run-tested on an Intel Mac.
+#
+# Product layout (OutDir in the .vcxproj files is
+# $(Platform)/$(ProjectName)/$(Configuration)\, relative to
+# C++Extension/Projects/VS/):
+#   Windows: C++Extension/Projects/VS/x64/msp_lib/Release (3.2)/msp_lib.so
+#            C++Extension/Projects/VS/x64/msp_lib/Release (3.4)/msp_lib.so
+#            C++Extension/Projects/VS/x64/newton/Release (3.2)/newton.dll
+#            (newton is Ruby-independent: one build is shared by 3.2 and 3.4)
+#   macOS:   build/macos-<ruby>-<arch>/Build/Products/Release/msp_lib.bundle
+#            (per-arch; the package job lipo-merges the 3.2 pair into a
+#            universal bundle; 3.4 is arm64-only, no lipo needed)
+#
+# Each build job takes ~10–20 min (checkout + toolchain + Newton build).
+# No job needs a SketchUp licence: CI only compiles, links and inspects
+# artifacts (file/lipo/dumpbin). Runtime verification is on real machines
+# (see PORTING.md, "真机验证清单").
+#
+# Reference: analysis/04-build-packaging-plan.md §5.
+
+name: build
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - 'C++Extension/**'
+      - 'RubyExtension/**'
+      - '.github/workflows/build.yml'
+  pull_request:
+    paths:
+      - 'C++Extension/**'
+      - 'RubyExtension/**'
+      - '.github/workflows/build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  VS_SOLUTION: C++Extension/Projects/VS/MSPhysics.sln
+  XCODE_MSP_LIB: C++Extension/Projects/xCode/msp_lib.xcodeproj
+  XCODE_NEWTON: C++Extension/Projects/xCode/newton.xcodeproj
+  MACOSX_DEPLOYMENT_TARGET: '12.0'
+
+jobs:
+  # ---------------------------------------------------------------- Windows
+  build-windows-3.2:
+    name: build-windows-3.2 (SU2024/2025/2026, Ruby 3.2.2)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Build Ruby 3.2 (x64)
+        run: msbuild "${{ env.VS_SOLUTION }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /m /v:m
+
+      - name: Verify exports (Init_msp_lib)
+        run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so"
+
+      - name: Verify artifact type
+        shell: pwsh
+        run: |
+          $so = Get-Item 'C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so'
+          $dll = Get-Item 'C++Extension\Projects\VS\x64\newton\Release (3.2)\newton.dll'
+          if ($so.Length -eq 0 -or $dll.Length -eq 0) { throw 'Empty build artifact' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win64-3.2-msp_lib
+          path: C++Extension/Projects/VS/x64/msp_lib/Release (3.2)/msp_lib.so
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win64-newton
+          path: C++Extension/Projects/VS/x64/newton/Release (3.2)/newton.dll
+
+  build-windows-3.4:
+    name: build-windows-3.4 (SU2027, Ruby 3.4.9) — EXPECTED TO FAIL until 3.4 headers/libs land
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: microsoft/setup-msbuild@v2
+
+      - name: Build Ruby 3.4 (x64)
+        # BLOCKED: needs ThirdParty/Ruby 3.4 headers + x64-ucrt-ruby340.lib
+        # and the `Release (3.4)|x64` configuration (see header comment).
+        run: msbuild "${{ env.VS_SOLUTION }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /m /v:m
+
+      - name: Verify exports (Init_msp_lib)
+        run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.4)\msp_lib.so"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win64-3.4-msp_lib
+          path: C++Extension/Projects/VS/x64/msp_lib/Release (3.4)/msp_lib.so
+
+  # ------------------------------------------------------------------ macOS
+  build-macos-3.2-x86_64:
+    name: build-macos-3.2-x86_64 (SU2024/2025/2026, Ruby 3.2.2, Intel)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app && xcodebuild -version
+
+      - name: Build msp_lib Ruby 3.2 (x86_64)
+        # BLOCKED: target "Ruby 3.2 - 64" does not exist yet — it is a
+        # comment placeholder in the .pbxproj (see workflow header) and
+        # must be created by hand in Xcode first. Uses the
+        # x86_64-darwin config.h once the target exists.
+        run: >
+          xcodebuild -project "${{ env.XCODE_MSP_LIB }}"
+          -target "Ruby 3.2 - 64" -configuration Release
+          ARCHS=x86_64 MACOSX_DEPLOYMENT_TARGET=12.0
+          -derivedDataPath build/macos-3.2-x86_64
+
+      - name: Build newton (x86_64)
+        run: >
+          xcodebuild -project "${{ env.XCODE_NEWTON }}"
+          -target "newton - 64" -configuration Release
+          ARCHS=x86_64 MACOSX_DEPLOYMENT_TARGET=12.0
+          -derivedDataPath build/macos-newton-x86_64
+
+      - name: Verify artifact type
+        run: file build/macos-3.2-x86_64/Build/Products/Release/msp_lib.bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-3.2-x86_64-msp_lib
+          path: build/macos-3.2-x86_64/Build/Products/Release/msp_lib.bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-newton-x86_64
+          path: build/macos-newton-x86_64/Build/Products/Release/newton.dylib
+
+  build-macos-3.2-arm64:
+    name: build-macos-3.2-arm64 (SU2024/2025/2026, Ruby 3.2.2, Apple Silicon)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app && xcodebuild -version
+
+      - name: Build msp_lib Ruby 3.2 (arm64)
+        # BLOCKED: same missing "Ruby 3.2 - 64" target as the x86_64 job.
+        # Uses the arm64-darwin config.h; pairs with the x86_64 job —
+        # the package job lipo-merges the two into one universal bundle.
+        run: >
+          xcodebuild -project "${{ env.XCODE_MSP_LIB }}"
+          -target "Ruby 3.2 - 64" -configuration Release
+          ARCHS=arm64 MACOSX_DEPLOYMENT_TARGET=12.0
+          -derivedDataPath build/macos-3.2-arm64
+
+      - name: Build newton (arm64)
+        run: >
+          xcodebuild -project "${{ env.XCODE_NEWTON }}"
+          -target "newton - 64" -configuration Release
+          ARCHS=arm64 MACOSX_DEPLOYMENT_TARGET=12.0
+          -derivedDataPath build/macos-newton-arm64
+
+      - name: Verify artifact type
+        run: file build/macos-3.2-arm64/Build/Products/Release/msp_lib.bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-3.2-arm64-msp_lib
+          path: build/macos-3.2-arm64/Build/Products/Release/msp_lib.bundle
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-newton-arm64
+          path: build/macos-newton-arm64/Build/Products/Release/newton.dylib
+
+  build-macos-3.4-arm64:
+    name: build-macos-3.4-arm64 (SU2027, Ruby 3.4.9, Apple Silicon) — EXPECTED TO FAIL until 3.4 headers land
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Pin Xcode 15.4
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app && xcodebuild -version
+
+      - name: Build msp_lib Ruby 3.4 (arm64)
+        # BLOCKED: needs the Ruby 3.4.9 headers/framework from a SU2027
+        # install and the `Ruby 3.4 - 64` target (see header comment).
+        # SU2027 is Apple Silicon only, so there is no x86_64 3.4 job.
+        run: >
+          xcodebuild -project "${{ env.XCODE_MSP_LIB }}"
+          -target "Ruby 3.4 - 64" -configuration Release
+          ARCHS=arm64 MACOSX_DEPLOYMENT_TARGET=12.0
+          -derivedDataPath build/macos-3.4-arm64
+
+      - name: Verify artifact type
+        run: file build/macos-3.4-arm64/Build/Products/Release/msp_lib.bundle
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-3.4-arm64-msp_lib
+          path: build/macos-3.4-arm64/Build/Products/Release/msp_lib.bundle
+
+  # ---------------------------------------------------------------- package
+  package:
+    name: package (.rbz assembly + structural checks)
+    runs-on: ubuntu-latest
+    # Needs ONLY build-windows-3.2 (see workflow header): the 3.4 jobs are
+    # blocked on SU2027 headers/libs and the macOS jobs on the missing
+    # Xcode targets. 3.4/macOS artifacts are assembled when present and
+    # skipped with a warning when absent; the structural check requires
+    # only the Windows 3.2 binaries.
+    needs:
+      - build-windows-3.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Install llvm-lipo (Linux equivalent of macOS lipo)
+        # NOTE: Apple's `lipo` only ships with Xcode, so it does not exist
+        # on ubuntu-latest even though analysis/04 §5.1 lists the merge
+        # under the ubuntu package job. `llvm-lipo -create` produces the
+        # same fat Mach-O binaries; the result is re-verified with
+        # `llvm-lipo -info` and again on a real Mac before release.
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq llvm file unzip zip python3
+
+      - name: Assemble stage/ from CI artifacts
+        run: |
+          set -euo pipefail
+          STAGE=RubyExtension/MSPhysics/libraries/stage
+          # Windows 3.2 (required — this is the job this package needs).
+          cp artifacts/win64-3.2-msp_lib/msp_lib.so "$STAGE/win64/3.2/msp_lib.so"
+          cp artifacts/win64-newton/newton.dll "$STAGE/win64/newton.dll"
+          # Windows 3.4: optional until the SU2027 headers/libs land.
+          if [ -f artifacts/win64-3.4-msp_lib/msp_lib.so ]; then
+            cp artifacts/win64-3.4-msp_lib/msp_lib.so "$STAGE/win64/3.4/msp_lib.so"
+          else
+            echo 'WARNING: no win64 3.4 msp_lib.so — SU2027 binary skipped'
+          fi
+          # macOS 3.2: lipo-merge x86_64 + arm64 into one universal bundle.
+          if [ -f artifacts/macos-3.2-x86_64-msp_lib/msp_lib.bundle ] && [ -f artifacts/macos-3.2-arm64-msp_lib/msp_lib.bundle ]; then
+            llvm-lipo -create \
+              artifacts/macos-3.2-x86_64-msp_lib/msp_lib.bundle \
+              artifacts/macos-3.2-arm64-msp_lib/msp_lib.bundle \
+              -output "$STAGE/osx64/3.2/msp_lib.bundle"
+            llvm-lipo -info "$STAGE/osx64/3.2/msp_lib.bundle"  # must show: x86_64 arm64
+          else
+            echo 'WARNING: macOS 3.2 bundle slices missing — universal bundle skipped (Xcode targets not created yet)'
+          fi
+          # macOS 3.4: arm64 only (SU2027 has no Intel build).
+          if [ -f artifacts/macos-3.4-arm64-msp_lib/msp_lib.bundle ]; then
+            cp artifacts/macos-3.4-arm64-msp_lib/msp_lib.bundle "$STAGE/osx64/3.4/msp_lib.bundle"
+            llvm-lipo -info "$STAGE/osx64/3.4/msp_lib.bundle"  # must show: arm64
+          else
+            echo 'WARNING: no macOS 3.4 bundle — SU2027 macOS binary skipped'
+          fi
+          # newton.dylib: lipo-merge the two arch slices into one universal
+          # file (Newton is Ruby-independent; the 3.4 build reuses it).
+          if [ -f artifacts/macos-newton-x86_64/newton.dylib ] && [ -f artifacts/macos-newton-arm64/newton.dylib ]; then
+            llvm-lipo -create \
+              artifacts/macos-newton-x86_64/newton.dylib \
+              artifacts/macos-newton-arm64/newton.dylib \
+              -output "$STAGE/osx64/newton.dylib"
+            llvm-lipo -info "$STAGE/osx64/newton.dylib"
+          else
+            echo 'WARNING: macOS newton.dylib slices missing — universal newton.dylib skipped'
+          fi
+          # NOTE: SDL .dylib/.dll files are NOT built here — Win x64 and mac
+          # x86_64 reuse the prebuilt binaries already in stage/; the mac
+          # arm64 SDL rebuild (analysis/04 §4.2, risk R4) is a separate job
+          # and its output must be lipo-merged into stage/osx64/ before
+          # this package step can ship a working Apple Silicon build.
+          bash scripts/check_stage.sh
+
+      - name: Package unsigned .rbz
+        run: bash scripts/package.rbz.sh --version 1.2.0 --out dist/MSPhysics-1.2.0-unsigned.rbz
+
+      - name: Structural checks
+        run: |
+          set -euo pipefail
+          RBZ=dist/MSPhysics-1.2.0-unsigned.rbz
+          # Root must contain only MSPhysics.rb + MSPhysics/.
+          test "$(unzip -Z1 "$RBZ" | cut -d/ -f1 | sort -u | tr '\n' ' ')" = "MSPhysics MSPhysics.rb "
+          # No 32-bit / old-Ruby leftovers, no macOS metadata.
+          if unzip -l "$RBZ" | grep -Eq '(^|/)(win32|osx32|1\.8|2\.0|2\.2|2\.5)/|__MACOSX|\.DS_Store'; then
+            echo 'ERROR: forbidden path in .rbz' >&2; exit 1
+          fi
+          # Required native binaries: Windows 3.2 only (the rest is
+          # optional until the 3.4 headers/libs and Xcode targets land).
+          for f in stage/win64/3.2/msp_lib.so stage/win64/newton.dll; do
+            unzip -l "$RBZ" "MSPhysics/libraries/$f" | grep -q "$f" || { echo "ERROR: missing $f" >&2; exit 1; }
+          done
+          for f in stage/win64/3.4/msp_lib.so \
+                   stage/osx64/3.2/msp_lib.bundle stage/osx64/3.4/msp_lib.bundle \
+                   stage/osx64/newton.dylib; do
+            unzip -l "$RBZ" "MSPhysics/libraries/$f" | grep -q "$f" || echo "WARNING: optional binary missing from .rbz: $f"
+          done
+          # VERSION in MSPhysics.rb must match the file name.
+          grep -q "VERSION *= *'1.2.0'" RubyExtension/MSPhysics.rb
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MSPhysics-1.2.0-unsigned-rbz
+          path: dist/MSPhysics-1.2.0-unsigned.rbz

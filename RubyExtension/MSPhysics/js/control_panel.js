@@ -18,11 +18,10 @@ function callback(name, data) {
     }
 }
 
-function callback(v_name, v_data) {
-    if (!v_data) v_data = '';
-    window.location.href = 'skp:' + v_name + '@' + v_data;
-}
-
+// NOTE (porting 2024-2027): a second callback() definition used to live
+// here and override the correct one above, forcing every callback onto
+// the WebDialog-only skp: protocol. HtmlDialog (CEF) needs sketchup.*,
+// so the duplicate was deleted; this file now matches js/dialog.js.
 function init() {
     var cw = $(window).width();
     var ch = $(window).height();
@@ -78,6 +77,9 @@ function add_slider(v_name, v_default_value, v_min, v_max, v_step) {
     slider.attachEvent("onChange", function(value) {
         //$( i_id ).val( $( l_id ).val() );
         $( i_id ).val( value );
+        // Push the value to Ruby: HtmlDialog has no get_element_value,
+        // so Ruby caches it via the 'slider_changed' callback.
+        callback('slider_changed', '["' + v_name + '",' + value + ']');
     });
     $( i_id ).on('change', function() {
         var res = parseFloat( $(this).val() );

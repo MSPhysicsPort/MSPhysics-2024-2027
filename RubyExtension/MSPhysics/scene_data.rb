@@ -23,9 +23,7 @@ class MSPhysics::SceneData < MSPhysics::Entity
     @use_camera = true
     model = Sketchup.active_model
     if args.size == 0
-      if Sketchup.version.to_i >= 16
-        @axes = model.axes.transformation
-      end
+      @axes = model.axes.transformation
       model.definitions.each { |d| d.instances.each { |i| @hidden_entities << i unless i.visible? } }
       model.layers.each { |layer| @hidden_layers << layer unless layer.visible? }
       model.rendering_options.each { |k, v| @rendering_options[k] = v }
@@ -35,9 +33,7 @@ class MSPhysics::SceneData < MSPhysics::Entity
     elsif args.size == 1
       page = args[0]
       AMS.validate_type(page, Sketchup::Page)
-      if Sketchup.version.to_i >= 16
-        @axes = page.axes.transformation
-      end
+      @axes = page.axes.transformation
       if page.hidden_entities
         page.hidden_entities.each { |e| @hidden_entities << e }
       end
@@ -73,7 +69,7 @@ class MSPhysics::SceneData < MSPhysics::Entity
     AMS.validate_type(scene_data, SceneData)
     ratio = AMS.clamp(ratio, 0, 1)
     model = Sketchup.active_model
-    if scene_data.use_axes? && Sketchup.version.to_i >= 16
+    if scene_data.use_axes?
       tra = AMS::Geometry.transition_transformation(@axes, scene_data.axes, ratio)
       model.axes.set(tra.origin, tra.xaxis, tra.yaxis, tra.zaxis)
     end

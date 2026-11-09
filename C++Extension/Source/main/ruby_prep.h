@@ -9,9 +9,16 @@
             #define _WIN_64_VER
         #endif
     #else
-        #ifndef _WIN_32_VER
-            #define _WIN_32_VER
-        #endif
+        /* 32-bit Windows is no longer supported (SU 2017+ is x64 only):
+           no _WIN_32_VER branch. See Projects/VS: all Win32 configs removed. */
+        #error "MSPhysics msp_lib requires 64-bit Windows (x64). 32-bit (Win32) is unsupported."
+    #endif
+#elif defined(__aarch64__)
+    /* Apple Silicon (arm64) macOS: no x86 SSE intrinsic headers.
+       _MACOSX_VER is defined below; the SSE includes are guarded by
+       __i386__/__x86_64__ and are skipped on arm64. */
+    #ifndef _MACOSX_VER
+        #define _MACOSX_VER
     #endif
 #else
     #ifndef _MACOSX_VER
@@ -19,7 +26,7 @@
     #endif
 #endif
 
-#if (defined (_WIN_32_VER) || defined (_WIN_64_VER))
+#if defined (_WIN_64_VER)
     #include <intrin.h>
     #include <emmintrin.h>
 #endif
@@ -36,6 +43,8 @@
         #ifdef __SSE4_1__
             #include <smmintrin.h>
         #endif
+    #elif defined(__aarch64__)
+        /* Apple Silicon: no x86 SSE intrinsic headers on arm64. */
     #endif
 #endif
 
@@ -47,39 +56,14 @@
 #define NOMINMAX
 
 // Ruby in SketchUp was configured with /MD and the headers reflect that.
-// And from Ruby version to Ruby version the configuration needs to be slightly
-// different. These macros smooth over this and should allow the project
-// to be built with newer Visual Studio runtimes as well as /MT.
-
-#if _MT
-
-    // Visual Studio 2013
-    #if _MSC_VER >= 1800
-
-        // Ruby 2.0
-        #define HAVE_ACOSH 1
-        #define HAVE_CBRT 1
-        #define HAVE_ERF 1
-        #define HAVE_TGAMMA 1
-        #define HAVE_ROUND 1
-
-        // Ruby 2.2
-        #define HAVE_NEXTAFTER 1
-
-    #endif // VS 2013
-
-    // Visual Studio 2015
-    #if _MSC_VER >= 1900
-
-        #ifndef HAVE_STRUCT_TIMESPEC
-            #ifndef RUBY_VERSION25
-                #define HAVE_STRUCT_TIMESPEC 1
-            #endif
-        #endif
-
-    #endif // VS2015
-
-#endif // _MT
+//
+// NOTE (2024-2027 port): the old HAVE_ACOSH/HAVE_CBRT/HAVE_ERF/HAVE_TGAMMA/
+// HAVE_ROUND/HAVE_NEXTAFTER/HAVE_STRUCT_TIMESPEC hard-coding for VS2013/2015
+// was deleted. Ruby's own config.h (ruby/config.h, included via ruby.h
+// below) defines these correctly for the Ruby version actually being built
+// against (3.2 / 3.4, VS2022 / v143). Do not re-introduce hand-written
+// HAVE_* defines; if a macro is ever missing, branch on
+// RUBY_API_VERSION_MAJOR instead.
 
 // Ruby Headers
 #ifdef USE_WINSOCK
@@ -92,54 +76,27 @@
 #endif
 
 // Compatibility Macros
-
-/* The structures changes between Ruby 1.8 and 2.0 so the access to the
- * properties are different. There are new macros in Ruby 2.0 that should be
- * used instead. In order to make the code compile for both we need to add
- * matching macros for 1.8.
- */
-
-#ifndef RARRAY_PTR
-    #define RARRAY_PTR(s) (RARRAY(s)->ptr)
-#endif
-
-#ifndef RARRAY_LEN
-    #define RARRAY_LEN(x) (RARRAY(x)->len)
-#endif
-
-#ifndef RSTRING_PTR
-    #define RSTRING_PTR(s) (RSTRING(s)->ptr)
-#endif
-
-#ifndef RSTRING_LEN
-    #define RSTRING_LEN(s) (RSTRING(s)->len)
-#endif
-
-#ifndef DBL2NUM
-    #define DBL2NUM(dbl)  rb_float_new(dbl)
-#endif
-
-#ifndef NUM2SIZET
-    #if defined(HAVE_LONG_LONG) && SIZEOF_SIZE_T > SIZEOF_LONG
-        #define NUM2SIZET(x) ((size_t)NUM2ULL(x))
-    #else
-        #define NUM2SIZET(x) NUM2ULONG(x)
-    #endif
-#endif
+//
+// NOTE (2024-2027 port): the old 1.8-era fallback macros for RARRAY_PTR /
+// RARRAY_LEN / RSTRING_PTR / RSTRING_LEN / DBL2NUM / NUM2SIZET were deleted.
+// Ruby 3.2+ provides RSTRING_PTR/RSTRING_LEN/RARRAY_PTR/RARRAY_LEN as
+// static inline functions (with null-pointer debug checks) and NUM2SIZET /
+// DBL2NUM via its own headers; redefining them from the 1.8 struct layout
+// (RARRAY(x)->ptr / ->len) would read the wrong address on Ruby 3.x
+// (embedded strings, variable-length layout). Call sites must use the
+// Ruby-provided functions directly. Do not re-introduce these fallbacks.
 
 
 /*
- * Need to be very careful about how these macros are defined, especially
- * when compiling C++ code or C code with an ANSI C compiler.
- *
- * VALUEFUNC(f) is a macro used to typecast a C function that implements
- * a Ruby method so that it can be passed as an argument to API functions
- * like rb_define_method() and rb_define_singleton_method().
- *
- * VOIDFUNC(f) is a macro used to typecast a C function that implements
- * either the "mark" or "free" stuff for a Ruby Data object, so that it
- * can be passed as an argument to API functions like Data_Wrap_Struct()
- * and Data_Make_Struct().
+ * NOTE (2024-2027 port): VALUEFUNC / INTFUNC / VOIDFUNC are kept only so the
+ * existing ~647 rb_define_module_function call sites keep compiling.
+ * New or touched code must use Ruby's own RUBY_METHOD_FUNC(f) instead of
+ * VALUEFUNC(f) (same cast, but provided by ruby/internal/anyargs.h and
+ * guaranteed to track Ruby 3.2/3.4; ANYARGS is deprecated since Ruby 2.7
+ * and its survival in Ruby 3.4 headers is still to be re-verified once the
+ * SU2027 Ruby 3.4.9 headers are available). Do NOT mass-replace the 647
+ * existing sites in one go: migrate them gradually, per function, with the
+ * exact rbf_* signature checked (arity was audited: 0 mismatches).
  */
 
 #define INTFUNC(f) ((int (*)(ANYARGS)) f)

@@ -14,7 +14,10 @@ module MSPhysics
     # @param [String] script_name
     # @param [Integer] line
     def eval_script(script, script_name, line)
-      eval(script, binding, script_name, line)
+      # NOTE (porting 2024-2027): intentional eval - this executes the
+    # user's own MSPhysics script (a product feature), not JS callback
+    # input. The eval(params) -> JSON.parse migration does not apply here.
+    eval(script, binding, script_name, line)
     end
 
   end # class ControllerContext

@@ -1,7 +1,6 @@
 # @since 1.0.0
 module MSPhysics::Dialog
 
-  USE_HTML_DIALOG = ::Sketchup.version.to_i > 16 ? true : false
   DEFAULT_EDITOR_THEME = 'tomorrow_night'
   DEFAULT_EDITOR_FONT = 12
   DEFAULT_EDITOR_WRAP = 'free'
@@ -168,7 +167,7 @@ module MSPhysics::Dialog
           cmd << "editor_set_script(#{script});"
           cursor = nil
           begin
-            cursor = eval(@selected_body.get_attribute('MSPhysics Script', 'Cursor', '[1,0]'))
+            cursor = AMS.parse_json_value(@selected_body.get_attribute('MSPhysics Script', 'Cursor', '[1,0]'), [1, 0])
           rescue Exception => err
             cursor = [1,0]
           end
@@ -750,11 +749,7 @@ module MSPhysics::Dialog
         if joint_type2 && false
           identical_joints = {}
           geared_data = {}
-          if Sketchup.version.to_i > 6
-            sjparent = model.active_path ? model.active_path.last : nil
-          else
-            sjparent = model.active_entities.is_a?(Sketchup::Model) ? nil : model.active_entities.parent.instances.first
-          end
+          sjparent = model.active_path ? model.active_path.last : nil
           MSPhysics::JointConnectionTool.get_geared_joints(@selected_joint, sjparent, true, false).each { |joint, jparent, jtra, gear_id, gear_type, gear_ratio|
             jtype = joint.get_attribute('MSPhysics Joint', 'Type')
             jname = joint.name.to_s
@@ -1031,11 +1026,7 @@ module MSPhysics::Dialog
     # @param [Numeric] value
     # @return [String]
     def fix_numeric_value(value)
-      if AMS::IS_RUBY_VERSION_18
-        sprintf("%.8f", value.to_f).to_f
-      else
-        value.round(8)
-      end
+      value.round(8)
     end
 
     # Open UI.
@@ -1046,31 +1037,27 @@ module MSPhysics::Dialog
       @material = MSPhysics::Material.new('Temp', dbs[:density], dbs[:static_friction], dbs[:kinetic_friction], dbs[:elasticity], dbs[:softness])
 
       iws = [520, 520]
-      if USE_HTML_DIALOG
-        @dialog = ::UI::HtmlDialog.new({
-          :dialog_title => TITLE,
-          :preferences_key => TITLE,
-          :scrollable => false,
-          :resizable => true,
-          :width => iws.x,
-          :height => iws.y,
-          :left => 800,
-          :top => 600,
-          :min_width => 50,
-          :min_height => 50,
-          :max_width => -1,
-          :max_height => -1,
-          :style => ::UI::HtmlDialog::STYLE_DIALOG
-        })
-      else
-        @dialog = ::UI::WebDialog.new(TITLE, false, TITLE, iws.x, iws.y, 800, 600, true)
-      end
+      @dialog = ::UI::HtmlDialog.new({
+        :dialog_title => TITLE,
+        :preferences_key => TITLE,
+        :scrollable => false,
+        :resizable => true,
+        :width => iws.x,
+        :height => iws.y,
+        :left => 800,
+        :top => 600,
+        :min_width => 50,
+        :min_height => 50,
+        :max_width => -1,
+        :max_height => -1,
+        :style => ::UI::HtmlDialog::STYLE_DIALOG
+      })
 
       # Callbacks
       @dialog.add_action_callback('init') { |acs, params|
         unless @init_called
           @init_called = true
-          ds = eval(params)
+          ds = AMS.parse_json_value(params, [])
           if AMS::IS_PLATFORM_WINDOWS && @handle
             ws = AMS::Window.get_size(@handle)
             cr = AMS::Window.get_client_rect(@handle)
@@ -1083,13 +1070,13 @@ module MSPhysics::Dialog
           end
           @app_observer.selection_observer_active = true
         end
-        execute_js("set_viewport_scale(#{@dialog_scale}); g_use_webdialog = #{!USE_HTML_DIALOG};")
+        execute_js("set_viewport_scale(#{@dialog_scale}); g_use_webdialog = false;")
         update_state
       }
 
       @dialog.add_action_callback('editor_changed') { |acs, params|
         if @selected_body && @selected_body.valid?
-          code = USE_HTML_DIALOG ? params : @dialog.get_element_value('temp_script_area')
+          code = params
           @selected_body.set_attribute('MSPhysics Script', 'Value', code)
         end
       }
@@ -1134,7 +1121,7 @@ module MSPhysics::Dialog
 
       @dialog.add_action_callback('check_input_changed') { |acs, params|
         settings = MSPhysics::Settings
-        id, value = data = eval(params)
+        id, value = data = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1204,14 +1191,14 @@ module MSPhysics::Dialog
         when 'sound-add'
           path = ::UI.openpanel('Add Sound File', @default_sound_path)
           if path
-            path.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+            path.force_encoding('UTF-8')
             @default_sound_path = path
             begin
               add_sound(path)
               update_sound_state
             rescue TypeError => err
               err_message = err.message
-              err_message.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+              err_message.force_encoding('UTF-8')
               ::UI.messagebox(err_message)
             end
           end
@@ -1327,7 +1314,7 @@ module MSPhysics::Dialog
               props = MSPhysics::BODY_STATES - ['Body Script'] + ['Shape', 'Shape Dir', 'Type', 'Material', 'Mass Control', 'Magnet Mode', 'Density', 'Mass', 'Static Friction', 'Kinetic Friction', 'Elasticity', 'Softness', 'Magnet Force', 'Magnet Range', 'Magnet Strength', 'Linear Damping', 'Angular Damping', 'Emitter Rate', 'Emitter Delay', 'Emitter Lifetime', 'Thruster Controller', 'Emitter Controller']
               model = Sketchup.active_model
               op = 'MSPhysics Body - Assign Properties to All'
-              Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+              model.start_operation(op, true, false, false)
               model.definitions.each { |cd|
                 cd.instances.each { |inst|
                   next if inst == @selected_body || inst.get_attribute('MSPhysics', 'Type', 'Body') != 'Body' || inst.name != @selected_body.name
@@ -1353,7 +1340,7 @@ module MSPhysics::Dialog
               props = ['Value', 'Cursor']
               model = Sketchup.active_model
               op = 'MSPhysics Body - Assign Script to All'
-              Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+              model.start_operation(op, true, false, false)
               model.definitions.each { |cd|
                 cd.instances.each { |inst|
                   next if inst == @selected_body || inst.get_attribute('MSPhysics', 'Type', 'Body') != 'Body' || inst.name != @selected_body.name
@@ -1384,7 +1371,7 @@ module MSPhysics::Dialog
             if dict && name.size > 0 && type
               model = Sketchup.active_model
               op = 'MSPhysics Joint - Assign to All'
-              Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+              model.start_operation(op, true, false, false)
               msgbox_displayed = false
               change_controllers = false
               model.definitions.each { |cd|
@@ -1415,7 +1402,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('numeric_input_changed') { |acs, params|
-        id, value = eval(params)
+        id, value = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1449,7 +1436,7 @@ module MSPhysics::Dialog
             elsif attr == 'linear_damping' || attr == 'angular_damping'
               value = AMS.clamp(value, 0.0, 1.0)
             end
-            @selected_body.set_attribute('MSPhysics Body', option, value.to_i.is_a?(Bignum) ? value.to_s : value)
+            @selected_body.set_attribute('MSPhysics Body', option, value)
           end
         when 'joint', *MSPhysics::JOINT_FILE_NAMES
           if @selected_joint && @selected_joint.valid?
@@ -1458,7 +1445,7 @@ module MSPhysics::Dialog
             elsif %w(accel damp breaking_force rate power alignment_power friction linear_friction angular_friction).include?(attr)
               value = AMS.clamp(value, 0.0, nil)
             end
-            @selected_joint.set_attribute('MSPhysics Joint', option, value.to_i.is_a?(Bignum) ? value.to_s : value)
+            @selected_joint.set_attribute('MSPhysics Joint', option, value)
           end
         when 'gear'
           if @selected_joint && @selected_joint.valid?
@@ -1474,7 +1461,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('Integer_input_changed') { |acs, params|
-        id, value = eval(params)
+        id, value = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1489,7 +1476,7 @@ module MSPhysics::Dialog
           end
         when 'body'
           if @selected_body && @selected_body.valid?
-            @selected_body.set_attribute('MSPhysics Body', option, value.to_i.is_a?(Bignum) ? value.to_s : value)
+            @selected_body.set_attribute('MSPhysics Body', option, value)
           end
         when 'joint', *MSPhysics::JOINT_FILE_NAMES
         end
@@ -1542,7 +1529,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('slider_input_changed') { |acs, params|
-        id, value = eval(params)
+        id, value = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         case dict
           when 'simulation'
@@ -1559,7 +1546,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('controller_input_changed') { |acs, params|
-        id = USE_HTML_DIALOG ? params[0] : params
+        id = params[0]
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1570,19 +1557,19 @@ module MSPhysics::Dialog
         when 'simulation'
         when 'body'
           if @selected_body && @selected_body.valid?
-            code = USE_HTML_DIALOG ? params[1] : @dialog.get_element_value(id)
+            code = params[1]
             @selected_body.set_attribute('MSPhysics Body', option, code)
           end
         when 'joint', *MSPhysics::JOINT_FILE_NAMES
           if @selected_joint && @selected_joint.valid?
-            code = USE_HTML_DIALOG ? params[1] : @dialog.get_element_value(id)
+            code = params[1]
             @selected_joint.set_attribute('MSPhysics Joint', option, code)
           end
         end
       }
 
       @dialog.add_action_callback('text_input_changed') { |acs, params|
-        id = USE_HTML_DIALOG ? params[0] : params
+        id = params[0]
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1592,14 +1579,14 @@ module MSPhysics::Dialog
         case dict
         when 'body'
           if @selected_body && @selected_body.valid?
-            code = USE_HTML_DIALOG ? params[1] : @dialog.get_element_value(id)
+            code = params[1]
             if attr == 'name'
               @selected_body.name = code
             end
           end
         when 'joint'
           if @selected_joint && @selected_joint.valid?
-            code = USE_HTML_DIALOG ? params[1] : @dialog.get_element_value(id)
+            code = params[1]
             if attr == 'name'
               @selected_joint.name = code
             else
@@ -1610,7 +1597,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('select_input_changed') { |acs, params|
-        id, value = eval(params)
+        id, value = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         words = attr.split(/\_/)
         for i in 0...words.size
@@ -1641,7 +1628,7 @@ module MSPhysics::Dialog
             model = Sketchup.active_model
             if attr == 'material'
               op = 'MSPhysics Body - Change Material'
-              Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+              model.start_operation(op, true, false, false)
               @selected_body.set_attribute('MSPhysics Body', option, value)
               if value == MSPhysics::DEFAULT_BODY_SETTINGS[:material_name]
                 ['Material', 'Density', 'Static Friction', 'Kinetic Friction', 'Enable Friction', 'Elasticity', 'Softness'].each { |opt|
@@ -1685,7 +1672,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('slider_changed') { |acs, params|
-        id, value = eval(params)
+        id, value = AMS.parse_json_value(params, [nil, nil])
         dict, attr = id.split(/\-/, 2)
         case dict
           when 'simulation'
@@ -1701,7 +1688,7 @@ module MSPhysics::Dialog
       }
 
       @dialog.add_action_callback('placement_changed') { |acs, params|
-        tab, dw, dh, bresize = eval(params)
+        tab, dw, dh, bresize = AMS.parse_json_value(params, [nil, nil, nil, nil])
         last_tab = @active_tab
         @active_tab = tab
         @last_active_body_tab = tab if tab == 2 || tab == 3
@@ -1709,7 +1696,7 @@ module MSPhysics::Dialog
         update_dialog_style
         wsx = nil
         wsy = nil
-        ui_scale = Sketchup.version.to_i > 16 ? ::UI.scale_factor : 1.0
+        ui_scale = ::UI.scale_factor
         if tab == 3 && @selected_body && @selected_body.valid? && @selected_body.parent.is_a?(Sketchup::Model)
           wsx = @border_size.x + @editor_size.x * @dialog_scale * ui_scale
           wsy = @border_size.y + @editor_size.y * @dialog_scale * ui_scale
@@ -1730,7 +1717,7 @@ module MSPhysics::Dialog
       @dialog.add_action_callback('editor_size_changed') { |acs, params|
         if @selected_body && @selected_body.valid? && @selected_body.parent.is_a?(Sketchup::Model)
           if !AMS::IS_PLATFORM_WINDOWS || !@handle || AMS::Window.is_restored?(@handle)
-            cw, ch = eval(params)
+            cw, ch = AMS.parse_json_value(params, [nil, nil])
             @editor_size.x = cw
             @editor_size.y = ch
           end
@@ -1806,16 +1793,12 @@ module MSPhysics::Dialog
 
       # Set content
       dir = File.dirname(__FILE__)
-      dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      dir.force_encoding('UTF-8')
       url = File.join(dir, 'html/dialog.html')
       @dialog.set_file(url)
 
       # Show dialog
-      if AMS::IS_PLATFORM_WINDOWS || USE_HTML_DIALOG
-        @dialog.show
-      else
-        @dialog.show_modal
-      end
+      @dialog.show
 
       # Assign the on_close callback. Important: This must be called after
       # showing dialog in order to work on Mac OS X.
@@ -1834,11 +1817,7 @@ module MSPhysics::Dialog
 
         true
       }
-      if USE_HTML_DIALOG
-        @dialog.set_can_close() { do_on_close.call }
-      else
-        @dialog.set_on_close() { do_on_close.call }
-      end
+      @dialog.set_can_close() { do_on_close.call }
 
       # Find dialog window handle
       @handle = AMS::IS_PLATFORM_WINDOWS ? AMS::Sketchup.find_window_by_caption(TITLE) : nil
@@ -1945,7 +1924,7 @@ module MSPhysics::Dialog
         @editor_font = Sketchup.read_default('MSPhysics', 'Editor Font', DEFAULT_EDITOR_FONT).to_i
         @editor_wrap = Sketchup.read_default('MSPhysics', 'Editor Wrap', DEFAULT_EDITOR_WRAP).to_s
         @editor_print_margin = Sketchup.read_default('MSPhysics', 'Editor Print Margin', DEFAULT_EDITOR_PRINT_MARGIN) ? true : false
-        @editor_size = Kernel.eval(Sketchup.read_default('MSPhysics', 'Editor Size', DEFAULT_EDITOR_SIZE.inspect))
+        @editor_size = AMS.parse_json_value(Sketchup.read_default('MSPhysics', 'Editor Size', JSON.generate(DEFAULT_EDITOR_SIZE)), DEFAULT_EDITOR_SIZE.dup)
         if !@editor_size.is_a?(Array) || !@editor_size.x.is_a?(Integer) || !@editor_size.y.is_a?(Integer)
           @editor_size = DEFAULT_EDITOR_SIZE.dup
         end
@@ -1968,7 +1947,7 @@ module MSPhysics::Dialog
       Sketchup.write_default('MSPhysics', 'Editor Font', @editor_font.to_i)
       Sketchup.write_default('MSPhysics', 'Editor Wrap', @editor_wrap.to_s)
       Sketchup.write_default('MSPhysics', 'Editor Print Margin', @editor_print_margin)
-      Sketchup.write_default('MSPhysics', 'Editor Size', @editor_size.inspect)
+      Sketchup.write_default('MSPhysics', 'Editor Size', JSON.generate(@editor_size))
       Sketchup.write_default('MSPhysics', 'Dialog Help Box', @dialog_help_box)
       Sketchup.write_default('MSPhysics', 'Dialog Scale', @dialog_scale)
     end

@@ -28,7 +28,7 @@ class MSPhysics::JointTool
     joint_fname = MSPhysics::JOINT_ID_TO_FILE_NAME[@joint_id]
     raise(TypeError, "Given joint ID is invalid!", caller) unless joint_fname
     dir = File.dirname(__FILE__)
-    dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+    dir.force_encoding('UTF-8')
     @path = File.join(dir, 'models')
     @full_path = File.join(@path, joint_fname + '.skp')
     raise(TypeError, "File to the given joint ID doesn't exist!", caller) unless File.exist?(@full_path)
@@ -86,7 +86,7 @@ class MSPhysics::JointTool
     model = Sketchup.active_model
     ents = model.active_entities
     op = 'MSPhysics - Create Joint'
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     begin
       if ents.parent.is_a?(Sketchup::ComponentDefinition)
         type = ents.parent.instances.first.get_attribute('MSPhysics', 'Type', nil)
@@ -95,7 +95,7 @@ class MSPhysics::JointTool
       cd = model.definitions.load(@full_path)
       zaxis = pt1.vector_to(pt2)
       zlen = zaxis.length.to_f
-      edit_tra = Sketchup.version.to_i > 6 ? model.edit_transform : Geom::Transformation.new()
+      edit_tra = model.edit_transform
       if zlen < MSPhysics::EPSILON
         zaxis = edit_tra.zaxis
       else
@@ -112,7 +112,7 @@ class MSPhysics::JointTool
       layer = model.layers['MSPhysics Joints']
       unless layer
         layer = model.layers.add('MSPhysics Joints')
-        layer.color = @layer_color if Sketchup.version.to_i > 13
+        layer.color = @layer_color
       end
       if @joint_id == 12 || @joint_id == 13
         curve_path = File.join(@path, 'curve.skp')

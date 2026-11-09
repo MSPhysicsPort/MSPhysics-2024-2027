@@ -20,15 +20,26 @@ module MSPhysics::Settings
 
     # Save settings to registry
     def save_options
-      Sketchup.write_default('MSPhysics', 'Settings', @settings.inspect.inspect[1..-2])
+      Sketchup.write_default('MSPhysics', 'Settings', JSON.generate(@settings))
     end
 
     # Load settings from registry
     def load_options
       v = Sketchup.read_default('MSPhysics', 'Settings', '{}')
       begin
-        res = eval(v)
+        res = JSON.parse(v, :symbolize_names => true)
         @settings.merge!(res) if res.is_a?(Hash)
+      rescue JSON::ParserError
+        # Fall back to the pre-1.2.0 Ruby-literal format
+        # ("{:key_nav_velocity=>5.0, ...}") written by the old double
+        # inspect hack, so existing users keep their settings.
+        begin
+          legacy = v.gsub(/:([a-z_][a-z0-9_]*)=>/) { "\"#{$1}\":" }.gsub('=>', ':')
+          res = JSON.parse(legacy, :symbolize_names => true)
+          @settings.merge!(res) if res.is_a?(Hash)
+        rescue Exception
+          # Do nothing; use default options.
+        end
       rescue Exception => e
         # Do nothing; use default options.
       end

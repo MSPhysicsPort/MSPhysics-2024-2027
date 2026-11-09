@@ -12,9 +12,6 @@
     <ClCompile Include="..\..\Source\win\msp_lib.cpp">
       <Filter>win</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\Source\win\stdafx.cpp">
-      <Filter>win</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\Source\main\angular_integration.cpp">
       <Filter>main</Filter>
     </ClCompile>

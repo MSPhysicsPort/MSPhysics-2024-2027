@@ -58,12 +58,18 @@ MSP::Gear::GearData* MSP::Gear::c_create(const NewtonWorld* world, MSP::Joint::J
         rb_raise(rb_eTypeError, "Cannot create gear between %s and %s!", MSP::Joint::JOINT_NAMES[joint_data1->m_jtype], MSP::Joint::JOINT_NAMES[joint_data2->m_jtype]);
     GearData* gear_data = new GearData(world, joint_data1, joint_data2, 0.0f, 0.0f);
     s_valid_gears.insert(gear_data);
+    // Register the gear's VALUE fields as GC roots in its world
+    // (user_data starts as Qnil; rbf_set_user_data re-registers it).
+    MSP::World::c_register_gc_root(MSP::World::c_get_world_data(world), gear_data, Qnil, Qnil, Qnil);
     return gear_data;
 }
 
 void MSP::Gear::c_destroy(GearData* gear_data) {
     if (s_valid_gears.find(gear_data) != s_valid_gears.end())
         s_valid_gears.erase(gear_data);
+    // Release the gear's GC roots before deleting it, so its user_data may
+    // be collected once the gear is gone.
+    MSP::World::c_unregister_gc_root(MSP::World::c_get_world_data(gear_data->m_world), gear_data);
     delete gear_data;
 }
 
@@ -141,6 +147,7 @@ VALUE MSP::Gear::rbf_get_user_data(VALUE self, VALUE v_gear) {
 VALUE MSP::Gear::rbf_set_user_data(VALUE self, VALUE v_gear, VALUE v_user_data) {
     GearData* gear_data = c_value_to_gear(v_gear);
     gear_data->m_user_data = v_user_data;
+    MSP::World::c_register_gc_root(MSP::World::c_get_world_data(gear_data->m_world), gear_data, v_user_data, Qnil, Qnil);
     return Qnil;
 }
 

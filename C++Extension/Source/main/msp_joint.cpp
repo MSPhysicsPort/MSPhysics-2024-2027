@@ -98,7 +98,10 @@ void MSP::Joint::constraint_destructor(const NewtonJoint* joint) {
 void MSP::Joint::get_info(const NewtonJoint* const joint, NewtonJointRecord* const info) {
     JointData* joint_data = reinterpret_cast<JointData*>(NewtonJointGetUserData(joint));
 
-    strcpy(info->m_descriptionType, TYPE_NAME);
+    // m_descriptionType is char[128] (Newton.h); strncpy + explicit NUL
+    // instead of strcpy so a longer TYPE_NAME can never overrun it.
+    strncpy(info->m_descriptionType, TYPE_NAME, sizeof(info->m_descriptionType) - 1);
+    info->m_descriptionType[sizeof(info->m_descriptionType) - 1] = '\0';
 
     info->m_attachBody_0 = joint_data->m_child;
     info->m_attachBody_1 = joint_data->m_parent;
@@ -268,8 +271,13 @@ MSP::Joint::JointData* MSP::Joint::c_create(const NewtonWorld* world, const Newt
         pin_matrix = pin_matrix * parent_matrix.Inverse();
     }
     JointData* joint_data = new JointData(world, 6, parent, pin_matrix, v_group);
-    if (v_group != Qnil) s_map_group_to_joints[v_group][joint_data] = true;
+    // Group map key is rb_obj_id(group), not the group VALUE itself (see
+    // msp_joint.h); no GC root is needed for an Integer-immediate key.
+    if (v_group != Qnil) s_map_group_to_joints[rb_obj_id(v_group)][joint_data] = true;
     s_valid_joints[joint_data] = true;
+    // Register the joint's VALUE fields as GC roots in its world
+    // (user_data starts as Qnil; rbf_set_user_data re-registers it).
+    MSP::World::c_register_gc_root(MSP::World::c_get_world_data(world), joint_data, Qnil, v_group, Qnil);
     return joint_data;
 }
 
@@ -278,7 +286,7 @@ void MSP::Joint::c_destroy(JointData* joint_data) {
         s_valid_joints.erase(joint_data);
     VALUE v_group = rb_ary_entry(joint_data->m_user_data, 1);
     if (v_group != Qnil) {
-        std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(v_group));
+        std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(rb_obj_id(v_group)));
         if (it != s_map_group_to_joints.end()) {
             if (it->second.find(joint_data) != it->second.end())
                 it->second.erase(joint_data);
@@ -286,6 +294,9 @@ void MSP::Joint::c_destroy(JointData* joint_data) {
                 s_map_group_to_joints.erase(it);
         }
     }
+    // Release the joint's GC roots before deleting it, so its user_data /
+    // group may be collected once the joint is gone.
+    MSP::World::c_unregister_gc_root(MSP::World::c_get_world_data(joint_data->m_world), joint_data);
     if (joint_data->m_connected)
         NewtonDestroyJoint(joint_data->m_world, joint_data->m_constraint);
     on_destroy(joint_data);
@@ -490,6 +501,7 @@ VALUE MSP::Joint::rbf_get_user_data(VALUE self, VALUE v_joint) {
 VALUE MSP::Joint::rbf_set_user_data(VALUE self, VALUE v_joint, VALUE v_user_data) {
     JointData* joint_data = c_value_to_joint(v_joint);
     joint_data->m_user_data = v_user_data;
+    MSP::World::c_register_gc_root(MSP::World::c_get_world_data(joint_data->m_world), joint_data, v_user_data, joint_data->m_group, Qnil);
     return Qnil;
 }
 
@@ -534,7 +546,7 @@ VALUE MSP::Joint::rbf_get_tension2(VALUE self, VALUE v_joint) {
 }
 
 VALUE MSP::Joint::rbf_get_joint_by_group(VALUE self, VALUE v_group) {
-    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(v_group));
+    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(rb_obj_id(v_group)));
     if (it == s_map_group_to_joints.end() || it->second.empty())
         return Qnil;
     else
@@ -542,7 +554,7 @@ VALUE MSP::Joint::rbf_get_joint_by_group(VALUE self, VALUE v_group) {
 }
 
 VALUE MSP::Joint::rbf_get_joints_by_group(VALUE self, VALUE v_group) {
-    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(v_group));
+    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(rb_obj_id(v_group)));
     bool proc_given = (rb_block_given_p() != 0);
     VALUE v_joints = rb_ary_new();
     if (it == s_map_group_to_joints.end() || it->second.empty())
@@ -562,7 +574,7 @@ VALUE MSP::Joint::rbf_get_joints_by_group(VALUE self, VALUE v_group) {
 }
 
 VALUE MSP::Joint::rbf_get_joint_data_by_group(VALUE self, VALUE v_group) {
-    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(v_group));
+    std::map<VALUE, std::map<JointData*, bool>>::iterator it(s_map_group_to_joints.find(rb_obj_id(v_group)));
     if (it == s_map_group_to_joints.end() || it->second.empty())
         return Qnil;
     else {

@@ -436,6 +436,10 @@ void MSP::Particle::init_ruby(VALUE mC) {
     V_GL_POLYGON = INT2FIX(9);
 
     s_reg_symbols = rb_ary_new();
+    // Intentionally never unregistered: s_reg_symbols is a process-lifetime
+    // static holding Symbols/Fixnums (immediates) for the Particle module.
+    // There is no matching rb_gc_unregister_address on purpose -- the array
+    // lives until process exit, so unregistering would serve no purpose.
     rb_gc_register_address(&s_reg_symbols);
 
     rb_ary_push(s_reg_symbols, SYM_POSITION);

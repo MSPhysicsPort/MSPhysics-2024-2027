@@ -99,6 +99,26 @@ public:
         VALUE m_body_groups;
         VALUE m_joint_user_datas;
         VALUE m_gear_user_datas;
+        // GC root for VALUEs held in C++ heap structs (see below). A Ruby
+        // Hash, keyed by the C++ object address (rb_ull2inum integer) whose
+        // value is a 3-element Array [user_data, group, destructor_proc].
+        // The Hash itself is a GC root via rb_gc_register_address, so every
+        // VALUE stored in it survives Ruby GC for as long as the owning
+        // Body/Joint/Gear lives. Body/Joint/Gear keep plain VALUE fields as
+        // non-owning cached copies ONLY -- the authoritative, GC-visible
+        // copy is the entry in this Hash (plus, for bodies, the legacy
+        // m_body_destructors / m_body_user_datas / m_body_groups Hashes
+        // reachable via m_user_info). Every setter that changes one of
+        // those VALUEs must call c_register_gc_root(); every destructor
+        // must call c_unregister_gc_root(). Never read a VALUE field after
+        // its root entry was removed.
+        VALUE m_gc_roots;
+        // m_group_to_body_map key is rb_obj_id(group) -- an Integer
+        // immediate, NOT a heap VALUE. Group objects are therefore never
+        // stored here as GC-managed pointers: no GC root is needed for the
+        // keys, and a collected group simply stops matching lookups. The
+        // group VALUE itself stays alive via m_gc_roots / m_body_groups.
+        // Entries are erased in Body::destructor_callback.
         std::map<VALUE, const NewtonBody*> m_group_to_body_map;
         std::vector<BodyTouchData*> m_touch_data;
         std::vector<BodyTouchingData*> m_touching_data;
@@ -119,10 +139,12 @@ public:
             m_body_groups(rb_hash_new()),
             m_joint_user_datas(rb_hash_new()),
             m_gear_user_datas(rb_hash_new()),
+            m_gc_roots(rb_hash_new()),
             m_time(0.0),
             m_material_id(material_id)
         {
             rb_gc_register_address(&m_user_info);
+            rb_gc_register_address(&m_gc_roots);
             rb_ary_store(m_user_info, 0, Qnil); // world destructor proc
             rb_ary_store(m_user_info, 1, Qnil); // world user data
             rb_ary_store(m_user_info, 2, m_body_destructors);
@@ -141,12 +163,19 @@ public:
             rb_hash_clear(m_gear_user_datas);
             rb_ary_clear(m_user_info);
 #endif
+            rb_hash_clear(m_gc_roots);
+            rb_gc_unregister_address(&m_gc_roots);
             rb_gc_unregister_address(&m_user_info);
         }
     };
 
     // Variables
     static std::map<const NewtonWorld*, WorldData*> valid_worlds;
+    // Process-lifetime queue of destructor Procs deferred out of Newton
+    // callbacks (see destructor_callback / c_run_pending_destructor_procs).
+    // A Ruby Array, registered once in init_ruby and intentionally never
+    // unregistered (same pattern as Particle::s_reg_symbols).
+    static VALUE s_pending_destructor_procs;
 
     // Callback Functions
     static void destructor_callback(const NewtonWorld* const world);
@@ -165,6 +194,26 @@ public:
     static bool c_is_world_valid(const NewtonWorld* address);
     static VALUE c_world_to_value(const NewtonWorld* world);
     static const NewtonWorld* c_value_to_world(VALUE v_world);
+    // Returns the WorldData for a world, or nullptr if world is null or has
+    // no user data (defensive; callers must null-check before using it as a
+    // GC-root owner).
+    static WorldData* c_get_world_data(const NewtonWorld* world);
+    // GC-root bookkeeping for Body/Joint/Gear VALUE fields (see WorldData::
+    // m_gc_roots). (Re-)registers the three VALUEs owned by the C++ object
+    // at `object` (address used as Hash key); unregister removes the entry
+    // so the VALUEs may be collected once the object is gone. Safe to call
+    // with a null world_data (no-op).
+    static void c_register_gc_root(WorldData* world_data, const void* object, VALUE user_data, VALUE group, VALUE destructor_proc);
+    static void c_unregister_gc_root(WorldData* world_data, const void* object);
+    // Deferred destructor Procs: Newton callbacks must never execute Ruby
+    // code (they may run without the GVL / outside the Ruby thread, and a
+    // Proc can raise or allocate). Callbacks only enqueue the Proc here;
+    // c_run_pending_destructor_procs() runs the queued Procs on the Ruby
+    // thread, called at the end of rbf_update / rbf_update_async /
+    // rbf_destroy / Body::rbf_destroy. If no further Ruby call ever
+    // happens, queued Procs run at the next such call.
+    static void c_enqueue_destructor_proc(VALUE v_proc);
+    static void c_run_pending_destructor_procs();
     static void c_update_magnets(const NewtonWorld* world, dFloat timestep);
     static void c_process_touch_events(const NewtonWorld* world);
     static void c_clear_touch_events(const NewtonWorld* world);

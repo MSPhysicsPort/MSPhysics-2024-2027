@@ -91,7 +91,7 @@ module MSPhysics::Replay
       # Wrap in operation block
       unless @wop_started
         op = 'MSPhysics Replay'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         @wop_started = true
       end
       # Close active path
@@ -113,9 +113,7 @@ module MSPhysics::Replay
             :width   => t ? t.width : nil,
             :height  => t ? t.height : nil
           }
-          if Sketchup.version.to_i >= 15
-            data[:original][:colorize_type] = material.colorize_type
-          end
+          data[:original][:colorize_type] = material.colorize_type
         elsif (data[:instance].nil? || data[:instance].deleted?)
           data[:instance] = model.materials.add("MSPReplay#{sprintf("%04d", count)}")
           count += 1
@@ -125,7 +123,7 @@ module MSPhysics::Replay
       @layers_data.each { |layer, data|
         if layer.is_a?(Sketchup::Layer) && layer.valid?
           data[:original] = { :visible => layer.visible? }
-          data[:original][:color] = layer.color if Sketchup.version.to_i > 13
+          data[:original][:color] = layer.color
         end
       }
       # Record original group data.
@@ -224,7 +222,7 @@ module MSPhysics::Replay
       # Wrap in operation block
       unless @wop_started
         op = 'MSPhysics Replay'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         @wop_started = true
       end
       # Stop animation
@@ -277,25 +275,22 @@ module MSPhysics::Replay
           if material.texture && (material.texture.width != orig_data[:width] || material.texture.height != orig_data[:height])
             material.texture.size = [orig_data[:width], orig_data[:height]]
           end
-          if Sketchup.version.to_i >= 15 && material.colorize_type != orig_data[:colorize_type]
+          if material.colorize_type != orig_data[:colorize_type]
             material.colorize_type = orig_data[:colorize_type]
           end
           data.delete(:original)
         end
-        if instance && instance.valid? && Sketchup.version.to_i >= 14
+        if instance && instance.valid?
           model.materials.remove(instance)
         end
       }
-      if Sketchup.version.to_i < 14
-        model.materials.purge_unused
-      end
       # Reset layer data
       @layers_data.each { |layer, data|
         next if !(layer.is_a?(Sketchup::Layer) && layer.valid?)
         orig_data = data[:original]
         next if orig_data.nil?
         layer.visible = orig_data[:visible] if layer.visible? != orig_data[:visible]
-        if Sketchup.version.to_i > 13 && layer.color.to_i != orig_data[:color].to_i
+        if layer.color.to_i != orig_data[:color].to_i
           layer.color = orig_data[:color]
         end
         data.delete(:original)
@@ -346,7 +341,7 @@ module MSPhysics::Replay
       # Wrap in operation block
       unless @wop_started
         op = 'MSPhysics Replay'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         @wop_started = true
       end
       # Hide trays
@@ -673,9 +668,7 @@ module MSPhysics::Replay
         :width   => t ? t.width : nil,
         :height  => t ? t.height : nil
       }
-      if Sketchup.version.to_i >= 15
-        data[pframe][:colorize_type] = material.colorize_type
-      end
+      data[pframe][:colorize_type] = material.colorize_type
       update_data_frame_limits(data, pframe)
     end
 
@@ -698,7 +691,7 @@ module MSPhysics::Replay
         data[:id] = layer.entityID
       end
       data[pframe] = { :visible => layer.visible? }
-      data[pframe][:color] = layer.color if Sketchup.version.to_i > 13
+      data[pframe][:color] = layer.color
       update_data_frame_limits(data, pframe)
     end
 
@@ -1038,7 +1031,7 @@ module MSPhysics::Replay
       # Start operation
       if wrap_in_op
         op = 'Saving MSPhysics Replay'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         op_started = true
       end
       # Notify
@@ -1438,6 +1431,11 @@ module MSPhysics::Replay
       gz = File.open(mspr_fpath, 'r')
       begin
         gz.each_line { |line|
+          # NOTE (porting 2024-2027): .mspreplay lines are legacy Ruby
+          # literals (e.g. Geom::Transformation.new([...]),
+          # Sketchup::Color.new(...)), not JSON, so JSON.parse cannot
+          # read them without breaking existing replay files. This eval
+          # only reads the user's own replay file, never JS input.
           res = eval(line)
           res.each { |k, v|
             if mspr_data[k]
@@ -1542,7 +1540,7 @@ module MSPhysics::Replay
       # Start operation
       if wrap_in_op
         op = 'Clearing MSPhysics Replay'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         op_started = true
       end
       dict = model.attribute_dictionaries['MSPhysics Replay']
@@ -1802,7 +1800,7 @@ module MSPhysics::Replay
           if mat.texture && frame_data[:width] && frame_data[:height] && (mat.texture.width != frame_data[:width] || mat.texture.height != frame_data[:height])
             mat.texture.size = [frame_data[:width], frame_data[:height]]
           end
-          if Sketchup.version.to_i >= 15 && frame_data[:colorize_type] && mat.colorize_type != frame_data[:colorize_type]
+          if frame_data[:colorize_type] && mat.colorize_type != frame_data[:colorize_type]
             mat.colorize_type = frame_data[:colorize_type]
           end
         }
@@ -1814,7 +1812,7 @@ module MSPhysics::Replay
           frame_data = get_frame_data(data, pframe)
           next if frame_data.nil?
           layer.visible = frame_data[:visible] if frame_data[:visible] != nil && layer.visible? != frame_data[:visible]
-          if Sketchup.version.to_i > 13 && frame_data[:color] && layer.color.to_i != frame_data[:color].to_i
+          if frame_data[:color] && layer.color.to_i != frame_data[:color].to_i
             layer.color = frame_data[:color]
           end
         }
@@ -1890,7 +1888,7 @@ module MSPhysics::Replay
       script_file = ::UI.savepanel('Choose Export Directory and Name', nil, model_fname)
       return false unless script_file
       fpath = File.dirname(script_file)
-      fpath.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      fpath.force_encoding('UTF-8')
       fname = File.basename(script_file, '.skp')
       # Preset user data
       sframe = results[0].to_i
@@ -1997,7 +1995,7 @@ module MSPhysics::Replay
       script_file = ::UI.savepanel('Choose Export Directory and Name', nil, model_fname)
       return false unless script_file
       fpath = File.dirname(script_file)
-      fpath.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      fpath.force_encoding('UTF-8')
       fname = File.basename(script_file, '.skp')
       # Preset user data
       sframe = results[0].to_i
@@ -2048,14 +2046,10 @@ module MSPhysics::Replay
           last_frame = rframe
         end
         full_path = "#{fpath}/#{fname}#{sprintf("%04d", count)}.skp"
-        if Sketchup.version.to_i < 14
+        if model.path.empty?
           model.save(full_path)
         else
-          if model.path.empty?
-            model.save(full_path)
-          else
-            model.save_copy(full_path)
-          end
+          model.save_copy(full_path)
         end
         progress = (rframe - sframe) * 100 / (eframe - sframe).to_f
         Sketchup.set_status_text("Exporting MSPhysics Replay Animation    Progress: #{rframe - sframe} / #{eframe - sframe} -- #{sprintf("%.2f", progress)}%", SB_PROMPT)
@@ -2149,7 +2143,7 @@ SU2KT.store_values(settings)
 #~ script_file = SU2KT.select_script_path_window
 #~ return false unless script_file
 model_filename = File.basename(model.path)
-model_filename.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+model_filename.force_encoding('UTF-8')
 if model_filename.empty?
   model_name = 'Untitled.kst'
 else
@@ -2157,7 +2151,7 @@ else
 end
 script_file = ::UI.savepanel('Select Export Directory and Name', '', model_name)
 return false unless script_file
-script_file.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+script_file.force_encoding('UTF-8')
 script_file.gsub!(/\u005c/, '/')
 script_file = File.join(File.dirname(script_file), File.basename(script_file, '.*') + '.kst')
 @model_name = File.basename(script_file, '.*')
@@ -2266,7 +2260,7 @@ result = ::UI.messagebox(msg, MB_YESNO)
 # Render animation.
 kt_path = SU2KT.get_kt_path
 return unless kt_path
-kt_path.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+kt_path.force_encoding('UTF-8')
 if AMS::IS_PLATFORM_WINDOWS
   #batch_file_path = File.join(File.dirname(kt_path), 'start.bat')
   batch_file_path = File.join(File.dirname(script_file), "#{File.basename(script_file, '.kst')}_start_render.bat")
@@ -2331,7 +2325,7 @@ return false unless results
 
 # Select export path and create export folder.
 model_filename = File.basename(model.path)
-model_filename.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+model_filename.force_encoding('UTF-8')
 if model_filename.empty?
   queue_filename = 'Untitled.igq'
 else
@@ -2339,14 +2333,13 @@ else
 end
 batch_file_path = ::UI.savepanel('Select Export Directory and Name', '', queue_filename)
 return false unless batch_file_path
-batch_file_path.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+batch_file_path.force_encoding('UTF-8')
 batch_file_path.gsub!(/\u005c/, '/')
 batch_file_path = File.join(File.dirname(batch_file_path), File.basename(batch_file_path, '.*') + '.igq')
 export_dir = File.join(File.dirname(batch_file_path), File.basename(batch_file_path, '.*'))
 Dir.mkdir(export_dir) unless FileTest.exist?(export_dir)
 export_path = File.join(export_dir, File.basename(batch_file_path, '.*') + '.igs')
-export_path.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
-
+export_path.force_encoding('UTF-8')
 # Initiate indigo exporter
 ie = ::IndigoExporter.new(export_path)
 ie.settings.save_to_model()
@@ -2577,7 +2570,7 @@ end}
       model = Sketchup.active_model
       if wrap_in_op
         op = 'Saving MSPhysics Replay Settings'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         op_started = true
       end
       dict = 'MSPhysics Replay'
@@ -2653,10 +2646,8 @@ end}
         MSPhysics::Replay.clear_data_from_file
         err_message = err.message
         err_backtrace = err.backtrace
-        unless AMS::IS_RUBY_VERSION_18
-          err_message.force_encoding('UTF-8')
-          err_backtrace.each { |i| i.force_encoding('UTF-8') }
-        end
+        err_message.force_encoding('UTF-8')
+        err_backtrace.each { |i| i.force_encoding('UTF-8') }
         msg = "An error occurred while loading MSPhysics Replay data.\n#{err.class}:\n#{err_message}\nBacktrace:\n#{err_backtrace.join("\n")}\n\nThis error could be a result of the saved Replay data being irrelevant with the current MSPhysics version."
         puts msg
         ::UI.messagebox(msg)
@@ -2749,19 +2740,17 @@ end}
 
     def getExtents
       bb = Geom::BoundingBox.new
-      if Sketchup.version.to_i > 6
-        Sketchup.active_model.entities.each { |e|
-          next if e.is_a?(Sketchup::Text) && !e.has_leader?
-          if e.visible? && e.layer.visible?
-            ebb = e.bounds
-            if ebb.valid?
-              c = ebb.center
-              next if c.x.abs > 1.0e10 || c.y.abs > 1.0e10 || c.z.abs > 1.0e10
-              bb.add(ebb)
-            end
+      Sketchup.active_model.entities.each { |e|
+        next if e.is_a?(Sketchup::Text) && !e.has_leader?
+        if e.visible? && e.layer.visible?
+          ebb = e.bounds
+          if ebb.valid?
+            c = ebb.center
+            next if c.x.abs > 1.0e10 || c.y.abs > 1.0e10 || c.z.abs > 1.0e10
+            bb.add(ebb)
           end
-        }
-      end
+        end
+      }
       bb.empty? ? Sketchup.active_model.bounds : bb
     end
 

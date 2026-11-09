@@ -23,6 +23,12 @@ public:
         MSP::Joint::JointData* m_joint_data1;
         MSP::Joint::JointData* m_joint_data2;
         dFloat m_ratio;
+        // GC SAFETY: this VALUE lives in a C++ heap struct, invisible to
+        // Ruby GC. It is kept alive ONLY via WorldData::m_gc_roots
+        // (registered GC root owned by the gear's world; keyed by GearData
+        // address). Treat it as a non-owning cached copy: Gear::c_create
+        // registers it, rbf_set_user_data re-registers it, Gear::c_destroy
+        // unregisters it.
         VALUE m_user_data;
         dFloat m_initial_position1;
         dFloat m_initial_position2;

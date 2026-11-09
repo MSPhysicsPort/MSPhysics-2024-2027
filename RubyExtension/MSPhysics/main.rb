@@ -1,72 +1,22 @@
-# Ensure standard Set is loaded
-if Sketchup.version.to_i >= 14
-  Sketchup.require 'set'
-end
+# Ensure the standard Set library is loaded.
+Sketchup.require 'set'
 
-# Require all files
+# Require all files. The AMS Library dependency is gone: the bundled shim
+# (ams_shim.rb) provides AMS::Geometry/Group/clamp, and the minimal loader
+# (extension_loader.rb) replaces AMS::ExtensionManager.
+require 'json'
 ext_dir = File.dirname(__FILE__)
-ext_dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+require File.join(ext_dir, 'ams_shim')
+require File.join(ext_dir, 'extension_loader')
 
-ext_manager = AMS::ExtensionManager.new(ext_dir, MSPhysics::VERSION)
-if AMS::IS_PLATFORM_WINDOWS
-  ext_manager.add_optional_library('libFLAC-8')
-  ext_manager.add_optional_library('libmikmod-2')
-  ext_manager.add_optional_library('libmodplug-1')
-  ext_manager.add_optional_library('libogg')
-  ext_manager.add_optional_library('libvorbis')
-  ext_manager.add_optional_library('libvorbisfile-3')
-  ext_manager.add_required_library('SDL2')
-  ext_manager.add_required_library('SDL2_mixer')
-  ext_manager.add_optional_library('smpeg2')
-  ext_manager.add_required_library('newton')
-else
-  ext_manager.add_required_library('libSDL2-2.0.0')
-  ext_manager.add_required_library('libSDL2_mixer-2.0.0')
-  ext_manager.add_required_library('newton')
+# Load native libraries (SDL, Newton, msp_lib). A missing native library
+# is reported, not fatal: ExtensionLoader records a bilingual error,
+# main.rb shows it once, and the pure Ruby files still load.
+MSPhysics::ExtensionLoader.load_native_libraries
+unless MSPhysics::ExtensionLoader.native_loaded?
+  UI.messagebox(MSPhysics::ExtensionLoader.native_error_message, MB_OK)
 end
-ext_manager.add_c_extension('msp_lib')
-ext_manager.add_ruby_no_require('main')
-ext_manager.add_ruby_no_require('main_entry')
-ext_manager.add_ruby('entity')
-ext_manager.add_ruby('collision')
-ext_manager.add_ruby('contact')
-ext_manager.add_ruby('hit')
-ext_manager.add_ruby('script_exception')
-ext_manager.add_ruby('common_context')
-ext_manager.add_ruby('controller_context')
-ext_manager.add_ruby('body_context')
-ext_manager.add_ruby('body')
-ext_manager.add_ruby('world')
-ext_manager.add_ruby('material')
-ext_manager.add_ruby('materials')
-ext_manager.add_ruby('joint')
-ext_manager.add_ruby('gear')
-ext_manager.add_ruby('joint_hinge')
-ext_manager.add_ruby('joint_motor')
-ext_manager.add_ruby('joint_servo')
-ext_manager.add_ruby('joint_corkscrew')
-ext_manager.add_ruby('joint_ball_and_socket')
-ext_manager.add_ruby('joint_universal')
-ext_manager.add_ruby('joint_slider')
-ext_manager.add_ruby('joint_piston')
-ext_manager.add_ruby('joint_spring')
-ext_manager.add_ruby('joint_up_vector')
-ext_manager.add_ruby('joint_fixed')
-ext_manager.add_ruby('joint_curvy_slider')
-ext_manager.add_ruby('joint_curvy_piston')
-ext_manager.add_ruby('joint_plane')
-ext_manager.add_ruby('joint_point_to_point')
-ext_manager.add_ruby('simulation')
-ext_manager.add_ruby('settings')
-ext_manager.add_ruby('dialog')
-ext_manager.add_ruby('control_panel')
-ext_manager.add_ruby('joint_tool')
-ext_manager.add_ruby('joint_connection_tool')
-ext_manager.add_ruby('gear_connection_tool')
-ext_manager.add_ruby('replay')
-ext_manager.add_ruby('scene_data')
-ext_manager.require_all
-ext_manager.clean_up(false)
+MSPhysics::ExtensionLoader.require_all_ruby_files
 
 # @since 1.0.0
 module MSPhysics
@@ -447,7 +397,7 @@ module MSPhysics
       model = Sketchup.active_model
       if wrap_op
         op = 'MSPhysics - Scale Joints'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
       end
       model.set_attribute('MSPhysics', 'Joint Scale', scale)
       count = scale_joints(scale)
@@ -483,7 +433,7 @@ module MSPhysics
     # @note Manually wrap the operation.
     def add_watermark_text(x, y, text, name = 'Watermark', component = 'version_text.skp')
       ext_dir = File.dirname(__FILE__)
-      ext_dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      ext_dir.force_encoding('UTF-8')
       path = File.join(ext_dir, "models/#{component}")
       return unless File.exist?(path)
       model = Sketchup.active_model
@@ -504,7 +454,7 @@ module MSPhysics
       layer = model.layers['MSPWatermarkText']
       unless layer
         layer = model.layers.add('MSPWatermarkText')
-        layer.color = WATERMARK_COLOR if Sketchup.version.to_i > 13
+        layer.color = WATERMARK_COLOR
       end
       tt.layer = layer
       tt
@@ -520,7 +470,7 @@ module MSPhysics
     # @note Manually wrap the operation.
     def add_watermark_text2(x, y, text, name = 'Watermark', component = 'version_text.skp')
       ext_dir = File.dirname(__FILE__)
-      ext_dir.force_encoding('UTF-8') unless AMS::IS_RUBY_VERSION_18
+      ext_dir.force_encoding('UTF-8')
       path = File.join(ext_dir, "models/#{component}")
       return unless File.exist?(path)
       model = Sketchup.active_model
@@ -583,7 +533,7 @@ module MSPhysics
       }
       if wrap_op
         op = 'MSPhysics - Utilizing Version'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
       end
       make_compatible(false) if bmake_compatible
       if te
@@ -605,7 +555,7 @@ module MSPhysics
       # Start operation
       if wrap_op
         op = 'MSPhysics - Making Compatible'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
       end
       # Make changes
       update_timestep = model.get_attribute('MSPhysics', 'Update Timestep', MSPhysics::DEFAULT_SIMULATION_SETTINGS[:update_timestep]).to_f
@@ -740,18 +690,22 @@ module MSPhysics
 end # module MSPhysics
 
 unless file_loaded?(__FILE__)
-  # Setup audio
-  MSPhysics::SDL.init(MSPhysics::SDL::INIT_AUDIO | MSPhysics::SDL::INIT_JOYSTICK | MSPhysics::SDL::INIT_EVENTS)
-  MSPhysics::Mixer.init(MSPhysics::Mixer::INIT_SUPPORTED)
-  MSPhysics::Mixer.open_audio(22050, MSPhysics::Mixer::DEFAULT_FORMAT, 2, 1024)
-  MSPhysics::Mixer.allocate_channels(16)
-  Kernel.at_exit {
-    MSPhysics::Music.destroy_all
-    MSPhysics::Sound.destroy_all
-    MSPhysics::Mixer.close_audio
-    MSPhysics::Mixer.quit
-    MSPhysics::SDL.quit
-  }
+  # Setup audio. Only when the native libraries loaded; without msp_lib
+  # there is no MSPhysics::SDL/Mixer. The missing-library message was
+  # already shown above by ExtensionLoader.
+  if MSPhysics::ExtensionLoader.native_loaded?
+    MSPhysics::SDL.init(MSPhysics::SDL::INIT_AUDIO | MSPhysics::SDL::INIT_JOYSTICK | MSPhysics::SDL::INIT_EVENTS)
+    MSPhysics::Mixer.init(MSPhysics::Mixer::INIT_SUPPORTED)
+    MSPhysics::Mixer.open_audio(22050, MSPhysics::Mixer::DEFAULT_FORMAT, 2, 1024)
+    MSPhysics::Mixer.allocate_channels(16)
+    Kernel.at_exit {
+      MSPhysics::Music.destroy_all
+      MSPhysics::Sound.destroy_all
+      MSPhysics::Mixer.close_audio
+      MSPhysics::Mixer.quit
+      MSPhysics::SDL.quit
+    }
+  end
 
   # Create cursors
   path = File.join(ext_dir, 'images/cursors')
@@ -773,7 +727,7 @@ unless file_loaded?(__FILE__)
 
   # Choose icons path
   use_orig_icons = Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? true : false
-  if Sketchup.version.to_i > 13 && !use_orig_icons
+  if !use_orig_icons
     simg_path = 'images/icons/'
     limg_path = 'images/icons/'
   else
@@ -1168,7 +1122,7 @@ unless file_loaded?(__FILE__)
       state_menu = body_menu.add_submenu('State')
       state_menu.add_item('Default') {
         op = 'MSPhysics Body - Reset States'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics::BODY_STATES.each { |option|
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', option)
         }
@@ -1182,7 +1136,7 @@ unless file_loaded?(__FILE__)
           default_state = MSPhysics::DEFAULT_BODY_SETTINGS[option.downcase.gsub(/\s/, '_').to_sym]
           item = state_menu.add_item(option) {
             op = 'MSPhysics Body - Change State'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             state = MSPhysics.get_attribute(bodies, 'MSPhysics Body', option, default_state) ? true : false
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', option, !state)
             model.commit_operation
@@ -1198,14 +1152,14 @@ unless file_loaded?(__FILE__)
         MSPhysics::BODY_STATES.each { |option|
           state_menu.add_item(option) {
             op = 'MSPhysics Body - Change State'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', option, true)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
           }
           state_menu.add_item(MSPhysics::BODY_CON_STATES[index]) {
             op = 'MSPhysics Body - Change State'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', option, false)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1219,7 +1173,7 @@ unless file_loaded?(__FILE__)
         shape_menu = body_menu.add_submenu('Shape')
         shape_menu.add_item('Default') {
           op = 'MSPhysics Body - Reset Shape'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Shape')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1228,7 +1182,7 @@ unless file_loaded?(__FILE__)
         MSPhysics::SHAPES.each { |id, name|
           item = shape_menu.add_item(name) {
             op = 'MSPhysics Body - Change Shape'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Shape', id)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1242,7 +1196,7 @@ unless file_loaded?(__FILE__)
         shape_dir_menu = body_menu.add_submenu('Shape Dir')
         shape_dir_menu.add_item('Default') {
           op = 'MSPhysics Body - Reset Shape Dir'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Shape Dir')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1251,7 +1205,7 @@ unless file_loaded?(__FILE__)
         MSPhysics::SHAPE_DIRS.each { |id, name|
           item = shape_dir_menu.add_item(name) {
             op = 'MSPhysics Body - Change Shape Dir'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Shape Dir', id)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1265,7 +1219,7 @@ unless file_loaded?(__FILE__)
         default_mat = MSPhysics::DEFAULT_BODY_SETTINGS[:material_name]
         item = mat_menu.add_item(default_mat) {
           op = 'MSPhysics Body - Change Material'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           ['Material', 'Density', 'Static Friction', 'Kinetic Friction', 'Enable Friction', 'Elasticity', 'Softness'].each { |option|
             MSPhysics.delete_attribute(bodies, 'MSPhysics Body', option)
           }
@@ -1277,7 +1231,7 @@ unless file_loaded?(__FILE__)
         }
         item = mat_menu.add_item('Custom') {
           op = 'MSPhysics Body - Change Material'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Material', 'Custom')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1290,7 +1244,7 @@ unless file_loaded?(__FILE__)
         materials.each { |material|
           item = mat_menu.add_item(material.name) {
             op = 'MSPhysics Body - Change Material'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Material', material.name)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Density', material.density)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Static Friction', material.static_friction)
@@ -1309,7 +1263,7 @@ unless file_loaded?(__FILE__)
         mass_control_menu = body_menu.add_submenu('Mass Control')
         mass_control_menu.add_item('Default') {
           op = 'MSPhysics Body - Reset Mass Control'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Mass Control')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1318,7 +1272,7 @@ unless file_loaded?(__FILE__)
         MSPhysics::MASS_CONTROLS.each { |id, name|
           item = mass_control_menu.add_item(name) {
             op = 'MSPhysics Body - Change Mass Control'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Mass Control', id)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1331,7 +1285,7 @@ unless file_loaded?(__FILE__)
         magnet_mode_menu = body_menu.add_submenu('Magnet Mode')
         magnet_mode_menu.add_item('Default') {
           op = 'MSPhysics Body - Reset Magnet Mode'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Magnet Mode')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1340,7 +1294,7 @@ unless file_loaded?(__FILE__)
         MSPhysics::MAGNET_MODES.each { |id, name|
           item = magnet_mode_menu.add_item(name) {
             op = 'MSPhysics Body - Change Magnet Mode'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Magnet Mode', id)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1353,7 +1307,7 @@ unless file_loaded?(__FILE__)
         type_menu = body_menu.add_submenu('Type')
         type_menu.add_item('Default') {
           op = 'MSPhysics Body - Reset Type'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Type')
           model.commit_operation
           MSPhysics::Dialog.update_body_state
@@ -1362,7 +1316,7 @@ unless file_loaded?(__FILE__)
         MSPhysics::BODY_TYPES.each { |id, name|
           item = type_menu.add_item(name) {
             op = 'MSPhysics Body - Change Type'
-            Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+            model.start_operation(op, true, false, false)
             MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Type', id)
             model.commit_operation
             MSPhysics::Dialog.update_body_state
@@ -1375,13 +1329,13 @@ unless file_loaded?(__FILE__)
 
       body_menu.add_item('Clear Connected Joints') {
         op = 'MSPhysics Body - Clear Connected Joints'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Connected Joints')
         model.commit_operation
       }
       body_menu.add_item('Reset Properties') {
         op = 'MSPhysics Body - Reset Properties'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics')
         bodies.each { |e|
           dict = e.attribute_dictionary('MSPhysics Body')
@@ -1396,7 +1350,7 @@ unless file_loaded?(__FILE__)
       }
       body_menu.add_item('Clear Script') {
         op = 'MSPhysics Body - Clear Script'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics Script')
         MSPhysics.delete_attribute(bodies, 'MSPhysics Script', 'Enable Script')
         model.commit_operation
@@ -1411,7 +1365,7 @@ unless file_loaded?(__FILE__)
       end
       joint_menu.add_item('Make Unique ID') {
         op = 'MSPhysics Joint - Make Unique ID'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(joints, 'MSPhysics Joint', 'ID')
         joints.each { |joint|
           id = MSPhysics::JointTool.generate_uniq_id
@@ -1422,7 +1376,7 @@ unless file_loaded?(__FILE__)
       if joints.size > 1
         joint_menu.add_item('Make Same ID') {
           op = 'MSPhysics Joint - Make Same ID'
-          Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+          model.start_operation(op, true, false, false)
           id = MSPhysics::JointTool.generate_uniq_id
           MSPhysics.set_attribute(joints, 'MSPhysics Joint', 'ID', id)
           model.commit_operation
@@ -1430,7 +1384,7 @@ unless file_loaded?(__FILE__)
       end
       item = joint_menu.add_item('Connected Collide') {
         op = 'MSPhysics Joint - Make Same ID'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         state = MSPhysics.get_attribute(joints, 'MSPhysics Joint', 'Bodies Collidable', MSPhysics::Joint::DEFAULT_BODIES_COLLIDABLE) ? true : false
         MSPhysics.set_attribute(joints, 'MSPhysics Joint', 'Bodies Collidable', !state)
         model.commit_operation
@@ -1440,7 +1394,7 @@ unless file_loaded?(__FILE__)
       }
       joint_menu.add_item('Reset Properties') {
         op = 'MSPhysics Joint - Reset Properties'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         #~ MSPhysics.delete_attribute(joints, 'MSPhysics Joint')
         joints.each { |joint|
           dict = joint.attribute_dictionary('MSPhysics Joint')
@@ -1478,7 +1432,7 @@ unless file_loaded?(__FILE__)
         current_y = input[3].to_f
         current_z = input[4].to_f
         op = 'MSPhysics Buoyancy - Edit Plane Properties'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         MSPhysics.set_attribute(buoyancy_planes, dict, 'Density', density)
         MSPhysics.set_attribute(buoyancy_planes, dict, 'Viscosity', viscosity)
         MSPhysics.set_attribute(buoyancy_planes, dict, 'Current X', current_x)
@@ -1489,7 +1443,7 @@ unless file_loaded?(__FILE__)
       item = bp_menu.add_item('Ignore') {
         dict = 'MSPhysics Buoyancy Plane'
         op = 'MSPhysics Buoyancy - Change State'
-        Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+        model.start_operation(op, true, false, false)
         state = MSPhysics.get_attribute(buoyancy_planes, dict, 'Ignore', false) ? true : false
         MSPhysics.set_attribute(buoyancy_planes, dict, 'Ignore', !state)
         model.commit_operation
@@ -1590,7 +1544,7 @@ unless file_loaded?(__FILE__)
     current_z = input[4].to_f
     model = Sketchup.active_model
     op = 'MSPhysics Buoyancy - Create Plane'
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     mat = model.materials[default[:material_name]]
     unless mat
       mat = model.materials.add(default[:material_name])
@@ -1641,7 +1595,7 @@ unless file_loaded?(__FILE__)
     if choice == IDYES
       model = Sketchup.active_model
       op = 'MSPhysics - Delete All Attributes'
-      Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+      model.start_operation(op, true, false, false)
       MSPhysics.delete_all_attributes
       model.commit_operation
     end
@@ -1653,7 +1607,7 @@ unless file_loaded?(__FILE__)
   item = plugin_menu.add_item('Purge Unused') {
     model = Sketchup.active_model
     op = 'MSPhysics - Purge Unused'
-    Sketchup.version.to_i > 6 ? model.start_operation(op, true, false, false) : model.start_operation(op)
+    model.start_operation(op, true, false, false)
     model.definitions.purge_unused
     model.materials.purge_unused
     model.layers.purge_unused
@@ -1666,20 +1620,18 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_separator
 
-  if Sketchup.version.to_i > 13
-    item = plugin_menu.add_item('Use Original Icons') {
-      cur_use_orig = Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? true : false
-      Sketchup.write_default('MSPhysics', 'Use Original Icons', !cur_use_orig)
-      if cur_use_orig == use_orig_icons
-        UI.messagebox('The change will take place when SketchUp is re-launched.', MB_OK)
-      end
-    }
-    plugin_menu.set_validation_proc(item) {
-      Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? MF_CHECKED : MF_UNCHECKED
-    }
+  item = plugin_menu.add_item('Use Original Icons') {
+    cur_use_orig = Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? true : false
+    Sketchup.write_default('MSPhysics', 'Use Original Icons', !cur_use_orig)
+    if cur_use_orig == use_orig_icons
+      UI.messagebox('The change will take place when SketchUp is re-launched.', MB_OK)
+    end
+  }
+  plugin_menu.set_validation_proc(item) {
+    Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? MF_CHECKED : MF_UNCHECKED
+  }
 
-    plugin_menu.add_separator
-  end
+  plugin_menu.add_separator
 
   plugin_menu.add_item('Homepage') {
     UI.openURL("http://sketchucation.com/forums/viewtopic.php?f=323&t=56852")
@@ -1695,7 +1647,7 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_item('About') {
     msg = "#{MSPhysics::NAME} #{MSPhysics::VERSION} -- #{MSPhysics::RELEASE_DATE}\n"
-    msg << "Powered by Newton Dynamics #{MSPhysics::Newton.get_version}\n"
+    msg << "Powered by Newton Dynamics #{MSPhysics::ExtensionLoader.native_loaded? ? MSPhysics::Newton.get_version : 'n/a (native library not loaded)'}\n"
     msg << "Copyright #{MSPhysics.extension.copyright}"
     UI.messagebox(msg)
   }

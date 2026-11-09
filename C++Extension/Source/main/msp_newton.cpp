@@ -19,10 +19,9 @@
 */
 
 VALUE MSP::Newton::rbf_get_version(VALUE self) {
-    //return rb_sprintf("%d.%d", NEWTON_MAJOR_VERSION, NEWTON_MINOR_VERSION);
-    char version_str[16];
-    sprintf(version_str, "%d.%d", NEWTON_MAJOR_VERSION, NEWTON_MINOR_VERSION);
-    return rb_str_new2(version_str);
+    // rb_sprintf allocates the Ruby string directly; the old sprintf into a
+    // fixed 16-byte buffer had no bounds protection.
+    return rb_sprintf("%d.%d", NEWTON_MAJOR_VERSION, NEWTON_MINOR_VERSION);
 }
 
 VALUE MSP::Newton::rbf_get_float_size(VALUE self) {

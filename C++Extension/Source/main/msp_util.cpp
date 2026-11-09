@@ -143,7 +143,7 @@ int Util::max_int(int val1, int val2) {
 }
 
 VALUE Util::to_value(const char* value) {
-    VALUE v_string = rb_str_new2(value);
+    VALUE v_string = rb_str_new_cstr(value);
     #ifdef HAVE_RUBY_ENCODING_H
         static int enc_index = rb_enc_find_index("UTF-8");
         rb_enc_associate_index(v_string, enc_index);
@@ -165,14 +165,14 @@ VALUE Util::to_value(const wchar_t* value) {
     VALUE v_data = rb_ary_new2(length);
     for (unsigned int i = 0; i < length; ++i)
         rb_ary_store(v_data, i, INT2FIX(value[i]));
-    return rb_funcall(v_data, INTERN_PACK, 1, rb_str_new2("U*"));
+    return rb_funcall(v_data, INTERN_PACK, 1, rb_str_new_cstr("U*"));
 }
 
 VALUE Util::to_value(const wchar_t* value, unsigned int length) {
     VALUE v_data = rb_ary_new2(length);
     for (unsigned int i = 0; i < length; ++i)
         rb_ary_store(v_data, i, INT2FIX(value[i]));
-    return rb_funcall(v_data, INTERN_PACK, 1, rb_str_new2("U*"));
+    return rb_funcall(v_data, INTERN_PACK, 1, rb_str_new_cstr("U*"));
 }
 
 VALUE Util::vector_to_value(const dVector& value) {
@@ -235,12 +235,17 @@ VALUE Util::color_to_value(const dVector& value, dFloat alpha) {
 }
 
 char* Util::value_to_c_str(VALUE value) {
-    return RSTRING_PTR(StringValue(value));
+    // StringValueCStr (Ruby >= 1.9) guarantees a NUL-terminated buffer and
+    // raises on embedded NULs / non-convertible values. The old
+    // RSTRING_PTR(StringValue(value)) returned a raw interior pointer with
+    // no NUL guarantee, which callers pass straight to Mix_LoadWAV /
+    // Mix_LoadMUS / SDL_GetScancodeFromName / NewtonSerializeToFile.
+    return StringValueCStr(value);
 }
 
 wchar_t* Util::value_to_c_str2(VALUE value) {
     VALUE v_str = StringValue(value);
-    VALUE v_data = rb_funcall(v_str, INTERN_UNPACK, 1, rb_str_new2("U*"));
+    VALUE v_data = rb_funcall(v_str, INTERN_UNPACK, 1, rb_str_new_cstr("U*"));
     long len = RARRAY_LEN(v_data);
     wchar_t* text = new wchar_t[len+1];
     for (long i = 0; i < len; ++i)
