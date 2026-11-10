@@ -17,9 +17,11 @@ module MSPhysics
 
     # Ruby files in upstream load order (the old AMS::ExtensionManager
     # add_ruby list, minus main/main_entry which are already loaded).
-    # There are 40 .rb files in MSPhysics/: main.rb, main_entry.rb and the
-    # 38 below.
+    # There are 41 .rb files in MSPhysics/: main.rb, main_entry.rb and the
+    # 39 below ('language' is new in 1.2.0 and loads first: the toolbar
+    # and menu code in main.rb calls Language.t at load time).
     RUBY_FILES = %w[
+      language
       entity collision contact hit script_exception
       common_context controller_context body_context
       body world material materials

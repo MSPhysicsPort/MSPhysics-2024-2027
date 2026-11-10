@@ -1791,10 +1791,11 @@ module MSPhysics::Dialog
         end
       }
 
-      # Set content
+      # Set content (1.2.0: localized copy when language is Chinese).
       dir = File.dirname(__FILE__)
       dir.force_encoding('UTF-8')
-      url = File.join(dir, 'html/dialog.html')
+      html_file = MSPhysics::Language.chinese? ? 'html/dialog.zh.html' : 'html/dialog.html'
+      url = File.join(dir, html_file)
       @dialog.set_file(url)
 
       # Show dialog

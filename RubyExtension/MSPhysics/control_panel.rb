@@ -122,10 +122,11 @@ module MSPhysics::ControlPanel
         @slider_values[id.to_s] = value.to_f if id
       }
 
-      # Set content
+      # Set content (1.2.0: localized copy when language is Chinese).
       dir = ::File.dirname(__FILE__)
       dir.force_encoding('UTF-8')
-      url = ::File.join(dir, 'html/control_panel.html')
+      html_file = MSPhysics::Language.chinese? ? 'html/control_panel.zh.html' : 'html/control_panel.html'
+      url = ::File.join(dir, html_file)
       @dialog.set_file(url)
 
       # Show dialog

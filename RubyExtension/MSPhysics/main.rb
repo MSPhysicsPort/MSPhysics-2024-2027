@@ -739,7 +739,7 @@ unless file_loaded?(__FILE__)
   sim = MSPhysics::Simulation
   sim_toolbar = UI::Toolbar.new('MSPhysics')
 
-  cmd = UI::Command.new('Toggle UI') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Toggle UI')) {
     if MSPhysics::Dialog.open?
 	  MSPhysics::Dialog.close
 	else
@@ -750,13 +750,13 @@ unless file_loaded?(__FILE__)
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Dialog.open? ? MF_CHECKED : MF_UNCHECKED
   }
-  cmd.menu_text = cmd.tooltip = 'Toggle UI'
-  cmd.status_bar_text = 'Show/hide MSPhysics UI.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Toggle UI')
+  cmd.status_bar_text = MSPhysics::Language.t('Show/hide MSPhysics UI.')
   cmd.small_icon = simg_path + 'ui.png'
   cmd.large_icon = limg_path + 'ui.png'
   sim_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Toggle Play') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Toggle Play')) {
     if sim.active?
       sim.instance.toggle_play
     else
@@ -775,28 +775,28 @@ unless file_loaded?(__FILE__)
       MF_ENABLED
     end
   }
-  cmd.menu_text = cmd.tooltip = 'Toggle Play'
-  cmd.status_bar_text = 'Play/Pause simulation. This option starts simulation with all groups considered part of simulation.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Toggle Play')
+  cmd.status_bar_text = MSPhysics::Language.t('Play/Pause simulation. This option starts simulation with all groups considered part of simulation.')
   cmd.small_icon = simg_path + 'toggle_play.png'
   cmd.large_icon = limg_path + 'toggle_play.png'
   sim_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Reset') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Reset')) {
     sim.reset
   }
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     sim.active? ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Reset'
-  cmd.status_bar_text = 'End simulation, reset positions, and erase copied/emitted bodies.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Reset')
+  cmd.status_bar_text = MSPhysics::Language.t('End simulation, reset positions, and erase copied/emitted bodies.')
   cmd.small_icon = simg_path + 'reset.png'
   cmd.large_icon = limg_path + 'reset.png'
   sim_toolbar.add_item(cmd)
 
   sim_toolbar.add_separator
 
-  cmd = UI::Command.new('Toggle Play 2') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Toggle Play 2')) {
     if  sim.active?
       sim.instance.toggle_play
     else
@@ -815,24 +815,31 @@ unless file_loaded?(__FILE__)
       MF_ENABLED
     end
   }
-  cmd.menu_text = cmd.tooltip = 'Toggle Play 2'
-  cmd.status_bar_text = 'Play/Pause simulation. This option starts simulation from selected groups/components. All non-selected instances will act as stationary bodies.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Toggle Play 2')
+  cmd.status_bar_text = MSPhysics::Language.t('Play/Pause simulation. This option starts simulation from selected groups/components. All non-selected instances will act as stationary bodies.')
   cmd.small_icon = simg_path + 'toggle_play2.png'
   cmd.large_icon = limg_path + 'toggle_play2.png'
   sim_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Stop') {
-    sim.instance.reset_positions_on_end = false
-    sim.instance.erase_instances_on_end = false
-    sim.instance.reset_camera_on_end = false
-    sim.reset
+  cmd = UI::Command.new(MSPhysics::Language.t('Stop')) {
+    # NOTE (2026-11-10, real-machine bug): sim.instance is nil when no
+    # simulation is running. The validation proc normally grays this
+    # button out, but other plugins can invoke the command directly
+    # (e.g. through a dialog/command pipeline), bypassing validation.
+    # Guard here so Stop never raises NoMethodError on a nil instance.
+    if sim.active?
+      sim.instance.reset_positions_on_end = false
+      sim.instance.erase_instances_on_end = false
+      sim.instance.reset_camera_on_end = false
+      sim.reset
+    end
   }
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     sim.active? ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Stop'
-  cmd.status_bar_text = 'End simulation without resetting positions nor erasing emitted bodies.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Stop')
+  cmd.status_bar_text = MSPhysics::Language.t('End simulation without resetting positions nor erasing emitted bodies.')
   cmd.small_icon = simg_path + 'stop.png'
   cmd.large_icon = limg_path + 'stop.png'
   sim_toolbar.add_item(cmd)
@@ -841,14 +848,14 @@ unless file_loaded?(__FILE__)
 
 
   # Create MSPhysics Joints Toolbar
-  joints_toolbar = UI::Toolbar.new('MSPhysics Joints')
+  joints_toolbar = UI::Toolbar.new(MSPhysics::Language.t('MSPhysics Joints'))
 
   cmd = UI::Command.new('cmd') {
     tool = MSPhysics::JointConnectionTool
     tool.active? ? tool.deactivate : tool.activate
   }
-  cmd.menu_text = cmd.tooltip = 'Joint Connection Tool'
-  cmd.status_bar_text = 'Activate/Deactivate joint connection tool.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Joint Connection Tool')
+  cmd.status_bar_text = MSPhysics::Language.t('Activate/Deactivate joint connection tool.')
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::JointConnectionTool.active? ? MF_CHECKED : MF_UNCHECKED
@@ -857,7 +864,7 @@ unless file_loaded?(__FILE__)
   cmd.large_icon = limg_path + 'toggle_connect.png'
   joints_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Scale MSPhysics Joints') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Scale MSPhysics Joints')) {
     scale = MSPhysics.get_joint_scale
     prompts = ['Scale']
     defaults = [sprintf("%0.2f", scale)]
@@ -871,8 +878,8 @@ unless file_loaded?(__FILE__)
   cmd.set_validation_proc {
     Sketchup.active_model ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Edit Joints Scale'
-  cmd.status_bar_text = 'Change scale of MSPhysics joints.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Edit Joints Scale')
+  cmd.status_bar_text = MSPhysics::Language.t('Change scale of MSPhysics joints.')
   cmd.small_icon = simg_path + 'scale_joints.png'
   cmd.large_icon = limg_path + 'scale_joints.png'
   joints_toolbar.add_item(cmd)
@@ -900,22 +907,22 @@ unless file_loaded?(__FILE__)
 
 
   # Create Replay Toolbar
-  replay_toolbar = UI::Toolbar.new('MSPhysics Replay')
+  replay_toolbar = UI::Toolbar.new(MSPhysics::Language.t('MSPhysics Replay'))
 
-  cmd = UI::Command.new('Toggle Record') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Toggle Record')) {
     MSPhysics::Replay.record_enabled = !MSPhysics::Replay.record_enabled?
   }
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Replay.record_enabled? ? MF_CHECKED : MF_UNCHECKED
   }
-  cmd.menu_text = cmd.tooltip = 'Toggle Record'
-  cmd.status_bar_text = 'Enable/disable replay animation recording.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Toggle Record')
+  cmd.status_bar_text = MSPhysics::Language.t('Enable/disable replay animation recording.')
   cmd.small_icon = simg_path + 'replay_record.png'
   cmd.large_icon = limg_path + 'replay_record.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Toggle Camera Replay') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Toggle Camera Replay')) {
     state = !MSPhysics::Replay.camera_record_enabled?
     MSPhysics::Replay.camera_record_enabled = state
     MSPhysics::Replay.camera_replay_enabled = state
@@ -924,13 +931,13 @@ unless file_loaded?(__FILE__)
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Replay.camera_record_enabled? ? MF_CHECKED : MF_UNCHECKED
   }
-  cmd.menu_text = cmd.tooltip = 'Toggle Camera Replay'
-  cmd.status_bar_text = 'Enable/disable camera replay.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Toggle Camera Replay')
+  cmd.status_bar_text = MSPhysics::Language.t('Enable/disable camera replay.')
   cmd.small_icon = simg_path + 'replay_camera.png'
   cmd.large_icon = limg_path + 'replay_camera.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Play') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Play')) {
     if MSPhysics::Replay.active?
       if MSPhysics::Replay.paused? || MSPhysics::Replay.reversed?
         MSPhysics::Replay.reversed = false
@@ -953,13 +960,13 @@ unless file_loaded?(__FILE__)
       MF_ENABLED
     end
   }
-  cmd.menu_text = cmd.tooltip = 'Play'
-  cmd.status_bar_text = 'Play replay animation forward.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Play')
+  cmd.status_bar_text = MSPhysics::Language.t('Play replay animation forward.')
   cmd.small_icon = simg_path + 'replay_play.png'
   cmd.large_icon = limg_path + 'replay_play.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Reverse') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Reverse')) {
     if MSPhysics::Replay.active?
       if MSPhysics::Replay.paused? || !MSPhysics::Replay.reversed?
         MSPhysics::Replay.reversed = true
@@ -982,13 +989,13 @@ unless file_loaded?(__FILE__)
       MF_ENABLED
     end
   }
-  cmd.menu_text = cmd.tooltip = 'Reverse'
-  cmd.status_bar_text = 'Play replay animation backward.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Reverse')
+  cmd.status_bar_text = MSPhysics::Language.t('Play replay animation backward.')
   cmd.small_icon = simg_path + 'replay_reverse.png'
   cmd.large_icon = limg_path + 'replay_reverse.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Pause') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Pause')) {
     if MSPhysics::Replay.paused?
       MSPhysics::Replay.play
     else
@@ -1004,39 +1011,39 @@ unless file_loaded?(__FILE__)
       MF_GRAYED
     end
   }
-  cmd.menu_text = cmd.tooltip = 'Pause'
-  cmd.status_bar_text = 'Pause replay animation.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Pause')
+  cmd.status_bar_text = MSPhysics::Language.t('Pause replay animation.')
   cmd.small_icon = simg_path + 'replay_pause.png'
   cmd.large_icon = limg_path + 'replay_pause.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Reset') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Reset')) {
     MSPhysics::Replay.reset
   }
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Replay.active? ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Reset'
-  cmd.status_bar_text = 'Stop replay animation and reset positions.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Reset')
+  cmd.status_bar_text = MSPhysics::Language.t('Stop replay animation and reset positions.')
   cmd.small_icon = simg_path + 'replay_reset.png'
   cmd.large_icon = limg_path + 'replay_reset.png'
   replay_toolbar.add_item(cmd)
 
-  cmd = UI::Command.new('Stop') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Stop')) {
     MSPhysics::Replay.stop
   }
   cmd.set_validation_proc {
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Replay.active? ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Stop'
-  cmd.status_bar_text = 'Stop replay animation, but avoid resetting positions.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Stop')
+  cmd.status_bar_text = MSPhysics::Language.t('Stop replay animation, but avoid resetting positions.')
   cmd.small_icon = simg_path + 'replay_stop.png'
   cmd.large_icon = limg_path + 'replay_stop.png'
   replay_toolbar.add_item(cmd)
 
-  inc_spd_cmd = UI::Command.new('Increase Speed') {
+  inc_spd_cmd = UI::Command.new(MSPhysics::Language.t('Increase Speed')) {
     v = MSPhysics::Replay.speed
     MSPhysics::Replay.speed = v + (v < 10.0 ? (v < 2.0 ? (v < 0.1 ? 0.01 : 0.1) : 1.0) : 10.0)
   }
@@ -1045,13 +1052,13 @@ unless file_loaded?(__FILE__)
     inc_spd_cmd.status_bar_text = "Increase replay animation speed.    Speed: #{sprintf("%.2f", MSPhysics::Replay.speed)}"
     MF_ENABLED
   }
-  inc_spd_cmd.menu_text = inc_spd_cmd.tooltip = 'Increase Speed'
+  inc_spd_cmd.menu_text = inc_spd_cmd.tooltip = MSPhysics::Language.t('Increase Speed')
   inc_spd_cmd.status_bar_text = "Increase replay animation speed.    Speed: #{sprintf("%.2f", MSPhysics::Replay.speed)}"
   inc_spd_cmd.small_icon = simg_path + 'replay_increase_speed.png'
   inc_spd_cmd.large_icon = limg_path + 'replay_increase_speed.png'
   replay_toolbar.add_item(inc_spd_cmd)
 
-  dec_spd_cmd = UI::Command.new('Decrease Speed') {
+  dec_spd_cmd = UI::Command.new(MSPhysics::Language.t('Decrease Speed')) {
     v = MSPhysics::Replay.speed
     MSPhysics::Replay.speed = v - (v > 10.0 ? 10.0 : (v > 2.0 ? 1.0 : (v > 0.1 ? 0.1 : 0.01)))
   }
@@ -1060,13 +1067,13 @@ unless file_loaded?(__FILE__)
     dec_spd_cmd.status_bar_text = "Decrease replay animation speed.    Speed: #{sprintf("%.2f", MSPhysics::Replay.speed)}"
     MF_ENABLED
   }
-  dec_spd_cmd.menu_text = dec_spd_cmd.tooltip = 'Decrease Speed'
+  dec_spd_cmd.menu_text = dec_spd_cmd.tooltip = MSPhysics::Language.t('Decrease Speed')
   dec_spd_cmd.status_bar_text = "Decrease replay animation speed.    Speed: #{sprintf("%.2f", MSPhysics::Replay.speed)}"
   dec_spd_cmd.small_icon = simg_path + 'replay_decrease_speed.png'
   dec_spd_cmd.large_icon = limg_path + 'replay_decrease_speed.png'
   replay_toolbar.add_item(dec_spd_cmd)
 
-  cmd = UI::Command.new('Clear Data') {
+  cmd = UI::Command.new(MSPhysics::Language.t('Clear Data')) {
     begin
       MSPhysics::Replay.clear_active_data
       MSPhysics::Replay.clear_data_from_model(!MSPhysics::Simulation.active?, true)
@@ -1081,8 +1088,8 @@ unless file_loaded?(__FILE__)
     next MF_GRAYED unless Sketchup.active_model
     MSPhysics::Replay.active_data_valid? && !MSPhysics::Replay.active? ? MF_ENABLED : MF_GRAYED
   }
-  cmd.menu_text = cmd.tooltip = 'Clear Data'
-  cmd.status_bar_text = 'Clear recorded data.'
+  cmd.menu_text = cmd.tooltip = MSPhysics::Language.t('Clear Data')
+  cmd.status_bar_text = MSPhysics::Language.t('Clear recorded data.')
   cmd.small_icon = simg_path + 'replay_destroy.png'
   cmd.large_icon = limg_path + 'replay_destroy.png'
   replay_toolbar.add_item(cmd)
@@ -1115,12 +1122,12 @@ unless file_loaded?(__FILE__)
       if joints.empty? && buoyancy_planes.empty?
         body_menu = msp_menu
       else
-        text = bodies.size > 1 ? "#{bodies.size} Bodies" : "Body"
+        text = bodies.size > 1 ? "#{bodies.size} #{MSPhysics::Language.t('Bodies')}" : MSPhysics::Language.t('Body')
         body_menu = msp_menu.add_submenu(text)
       end
 
-      state_menu = body_menu.add_submenu('State')
-      state_menu.add_item('Default') {
+      state_menu = body_menu.add_submenu(MSPhysics::Language.t('State'))
+      state_menu.add_item(MSPhysics::Language.t('Default')) {
         op = 'MSPhysics Body - Reset States'
         model.start_operation(op, true, false, false)
         MSPhysics::BODY_STATES.each { |option|
@@ -1170,8 +1177,8 @@ unless file_loaded?(__FILE__)
       end
 
       if use_all_opts
-        shape_menu = body_menu.add_submenu('Shape')
-        shape_menu.add_item('Default') {
+        shape_menu = body_menu.add_submenu(MSPhysics::Language.t('Shape'))
+        shape_menu.add_item(MSPhysics::Language.t('Default')) {
           op = 'MSPhysics Body - Reset Shape'
           model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Shape')
@@ -1193,8 +1200,8 @@ unless file_loaded?(__FILE__)
           }
         }
 
-        shape_dir_menu = body_menu.add_submenu('Shape Dir')
-        shape_dir_menu.add_item('Default') {
+        shape_dir_menu = body_menu.add_submenu(MSPhysics::Language.t('Shape Dir'))
+        shape_dir_menu.add_item(MSPhysics::Language.t('Default')) {
           op = 'MSPhysics Body - Reset Shape Dir'
           model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Shape Dir')
@@ -1215,7 +1222,7 @@ unless file_loaded?(__FILE__)
           }
         }
 
-        mat_menu = body_menu.add_submenu('Material')
+        mat_menu = body_menu.add_submenu(MSPhysics::Language.t('Material'))
         default_mat = MSPhysics::DEFAULT_BODY_SETTINGS[:material_name]
         item = mat_menu.add_item(default_mat) {
           op = 'MSPhysics Body - Change Material'
@@ -1229,7 +1236,7 @@ unless file_loaded?(__FILE__)
         mat_menu.set_validation_proc(item) {
           MSPhysics.get_attribute(bodies, 'MSPhysics Body', 'Material', default_mat) == default_mat ? MF_CHECKED : MF_UNCHECKED
         }
-        item = mat_menu.add_item('Custom') {
+        item = mat_menu.add_item(MSPhysics::Language.t('Custom')) {
           op = 'MSPhysics Body - Change Material'
           model.start_operation(op, true, false, false)
           MSPhysics.set_attribute(bodies, 'MSPhysics Body', 'Material', 'Custom')
@@ -1260,8 +1267,8 @@ unless file_loaded?(__FILE__)
           }
         }
 
-        mass_control_menu = body_menu.add_submenu('Mass Control')
-        mass_control_menu.add_item('Default') {
+        mass_control_menu = body_menu.add_submenu(MSPhysics::Language.t('Mass Control'))
+        mass_control_menu.add_item(MSPhysics::Language.t('Default')) {
           op = 'MSPhysics Body - Reset Mass Control'
           model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Mass Control')
@@ -1282,8 +1289,8 @@ unless file_loaded?(__FILE__)
           }
         }
 
-        magnet_mode_menu = body_menu.add_submenu('Magnet Mode')
-        magnet_mode_menu.add_item('Default') {
+        magnet_mode_menu = body_menu.add_submenu(MSPhysics::Language.t('Magnet Mode'))
+        magnet_mode_menu.add_item(MSPhysics::Language.t('Default')) {
           op = 'MSPhysics Body - Reset Magnet Mode'
           model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Magnet Mode')
@@ -1304,8 +1311,8 @@ unless file_loaded?(__FILE__)
           }
         }
 
-        type_menu = body_menu.add_submenu('Type')
-        type_menu.add_item('Default') {
+        type_menu = body_menu.add_submenu(MSPhysics::Language.t('Type'))
+        type_menu.add_item(MSPhysics::Language.t('Default')) {
           op = 'MSPhysics Body - Reset Type'
           model.start_operation(op, true, false, false)
           MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Type')
@@ -1327,13 +1334,13 @@ unless file_loaded?(__FILE__)
         }
       end
 
-      body_menu.add_item('Clear Connected Joints') {
+      body_menu.add_item(MSPhysics::Language.t('Clear Connected Joints')) {
         op = 'MSPhysics Body - Clear Connected Joints'
         model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics Body', 'Connected Joints')
         model.commit_operation
       }
-      body_menu.add_item('Reset Properties') {
+      body_menu.add_item(MSPhysics::Language.t('Reset Properties')) {
         op = 'MSPhysics Body - Reset Properties'
         model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics')
@@ -1348,7 +1355,7 @@ unless file_loaded?(__FILE__)
         }
         model.commit_operation
       }
-      body_menu.add_item('Clear Script') {
+      body_menu.add_item(MSPhysics::Language.t('Clear Script')) {
         op = 'MSPhysics Body - Clear Script'
         model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(bodies, 'MSPhysics Script')
@@ -1363,7 +1370,7 @@ unless file_loaded?(__FILE__)
         text = joints.size > 1 ? "#{joints.size} Joints" : "Joint"
         joint_menu = msp_menu.add_submenu(text)
       end
-      joint_menu.add_item('Make Unique ID') {
+      joint_menu.add_item(MSPhysics::Language.t('Make Unique ID')) {
         op = 'MSPhysics Joint - Make Unique ID'
         model.start_operation(op, true, false, false)
         MSPhysics.delete_attribute(joints, 'MSPhysics Joint', 'ID')
@@ -1374,7 +1381,7 @@ unless file_loaded?(__FILE__)
         model.commit_operation
       }
       if joints.size > 1
-        joint_menu.add_item('Make Same ID') {
+        joint_menu.add_item(MSPhysics::Language.t('Make Same ID')) {
           op = 'MSPhysics Joint - Make Same ID'
           model.start_operation(op, true, false, false)
           id = MSPhysics::JointTool.generate_uniq_id
@@ -1382,7 +1389,7 @@ unless file_loaded?(__FILE__)
           model.commit_operation
         }
       end
-      item = joint_menu.add_item('Connected Collide') {
+      item = joint_menu.add_item(MSPhysics::Language.t('Connected Collide')) {
         op = 'MSPhysics Joint - Make Same ID'
         model.start_operation(op, true, false, false)
         state = MSPhysics.get_attribute(joints, 'MSPhysics Joint', 'Bodies Collidable', MSPhysics::Joint::DEFAULT_BODIES_COLLIDABLE) ? true : false
@@ -1392,7 +1399,7 @@ unless file_loaded?(__FILE__)
       joint_menu.set_validation_proc(item) {
         MSPhysics.get_attribute(joints, 'MSPhysics Joint', 'Bodies Collidable', MSPhysics::Joint::DEFAULT_BODIES_COLLIDABLE) ? MF_CHECKED : MF_UNCHECKED
       }
-      joint_menu.add_item('Reset Properties') {
+      joint_menu.add_item(MSPhysics::Language.t('Reset Properties')) {
         op = 'MSPhysics Joint - Reset Properties'
         model.start_operation(op, true, false, false)
         #~ MSPhysics.delete_attribute(joints, 'MSPhysics Joint')
@@ -1414,7 +1421,7 @@ unless file_loaded?(__FILE__)
         text = buoyancy_planes.size > 1 ? "#{buoyancy_planes.size} Buoyancy Planes" : "Buoyancy Plane"
         bp_menu = msp_menu.add_submenu(text)
       end
-      bp_menu.add_item('Properties') {
+      bp_menu.add_item(MSPhysics::Language.t('Properties')) {
         default = MSPhysics::DEFAULT_BUOYANCY_PLANE_SETTINGS
         prompts = ['Density (kg/m³)', 'Viscosity (0.0 - 1.0)', 'Current X', 'Current Y', 'Current Z']
         dict = 'MSPhysics Buoyancy Plane'
@@ -1440,7 +1447,7 @@ unless file_loaded?(__FILE__)
         MSPhysics.set_attribute(buoyancy_planes, dict, 'Current Z', current_z)
         model.commit_operation
       }
-      item = bp_menu.add_item('Ignore') {
+      item = bp_menu.add_item(MSPhysics::Language.t('Ignore')) {
         dict = 'MSPhysics Buoyancy Plane'
         op = 'MSPhysics Buoyancy - Change State'
         model.start_operation(op, true, false, false)
@@ -1457,7 +1464,7 @@ unless file_loaded?(__FILE__)
   # Create Plugin Menus
   plugin_menu = UI.menu('Plugins').add_submenu('MSPhysics')
 
-  item = plugin_menu.add_item('Export Replay to Images') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Export Replay to Images')) {
     MSPhysics::Replay.export_to_images
   }
   plugin_menu.set_validation_proc(item) {
@@ -1465,7 +1472,7 @@ unless file_loaded?(__FILE__)
     MSPhysics::Replay.active_data_valid? ? MF_ENABLED : MF_GRAYED
   }
 
-  item = plugin_menu.add_item('Export Replay to SKP') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Export Replay to SKP')) {
     MSPhysics::Replay.export_to_skp
   }
   plugin_menu.set_validation_proc(item) {
@@ -1473,7 +1480,7 @@ unless file_loaded?(__FILE__)
     MSPhysics::Replay.active_data_valid? ? MF_ENABLED : MF_GRAYED
   }
 
-  item = plugin_menu.add_item('Export Replay to Kerkythea') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Export Replay to Kerkythea')) {
     MSPhysics::Replay.export_to_kerkythea
   }
   plugin_menu.set_validation_proc(item) {
@@ -1481,7 +1488,7 @@ unless file_loaded?(__FILE__)
     MSPhysics::Replay.active_data_valid? ? MF_ENABLED : MF_GRAYED
   }
 
-  item = plugin_menu.add_item('Export Replay to SkIndigo') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Export Replay to SkIndigo')) {
     MSPhysics::Replay.export_to_skindigo
   }
   plugin_menu.set_validation_proc(item) {
@@ -1489,7 +1496,7 @@ unless file_loaded?(__FILE__)
     MSPhysics::Replay.active_data_valid? ? MF_ENABLED : MF_GRAYED
   }
 
-  item = plugin_menu.add_item('Replay Settings') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Replay Settings')) {
     str_yes = 'Yes'
     str_no = 'No'
     str_yn = str_yes + '|' + str_no
@@ -1531,7 +1538,7 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_separator
 
-  item = plugin_menu.add_item('Create Buoyancy Plane') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Create Buoyancy Plane')) {
     default = MSPhysics::DEFAULT_BUOYANCY_PLANE_SETTINGS
     prompts = ['Density (kg/m³)', 'Viscosity (0.0 - 1.0)', 'Current X', 'Current Y', 'Current Z']
     defaults = [default[:density], default[:viscosity], default[:current_x], default[:current_y], default[:current_z]]
@@ -1570,7 +1577,7 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_separator
 
-  item = plugin_menu.add_item('Select All Joints') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Select All Joints')) {
     model = Sketchup.active_model
     model.selection.clear
     model.definitions.each { |d|
@@ -1584,11 +1591,11 @@ unless file_loaded?(__FILE__)
   }
 
 
-  plugin_menu.add_item('Make Compatible') {
+  plugin_menu.add_item(MSPhysics::Language.t('Make Compatible')) {
     MSPhysics.make_compatible(true)
   }
 
-  item = plugin_menu.add_item('Delete All Attributes') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Delete All Attributes')) {
     msg = "This option removes all MSPhysics assigned properties, scripts, and record of connected joints.\n"
     msg << "Do you want to proceed?"
     choice = UI.messagebox(msg, MB_YESNO)
@@ -1604,7 +1611,7 @@ unless file_loaded?(__FILE__)
     Sketchup.active_model ? MF_ENABLED : MF_GRAYED
   }
 
-  item = plugin_menu.add_item('Purge Unused') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Purge Unused')) {
     model = Sketchup.active_model
     op = 'MSPhysics - Purge Unused'
     model.start_operation(op, true, false, false)
@@ -1620,11 +1627,11 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_separator
 
-  item = plugin_menu.add_item('Use Original Icons') {
+  item = plugin_menu.add_item(MSPhysics::Language.t('Use Original Icons')) {
     cur_use_orig = Sketchup.read_default('MSPhysics', 'Use Original Icons', false) ? true : false
     Sketchup.write_default('MSPhysics', 'Use Original Icons', !cur_use_orig)
     if cur_use_orig == use_orig_icons
-      UI.messagebox('The change will take place when SketchUp is re-launched.', MB_OK)
+      UI.messagebox(MSPhysics::Language.t('The change will take place when SketchUp is re-launched.'), MB_OK)
     end
   }
   plugin_menu.set_validation_proc(item) {
@@ -1633,19 +1640,35 @@ unless file_loaded?(__FILE__)
 
   plugin_menu.add_separator
 
-  plugin_menu.add_item('Homepage') {
+  # Language switch (1.2.0). Toolbar/menu text is built at load time, so
+  # switching applies to toolbars and menus after relaunching SketchUp;
+  # the UI dialog and control panel read the setting on every open.
+  lang_menu = plugin_menu.add_submenu(MSPhysics::Language.t('Language'))
+  MSPhysics::Language::SUPPORTED.each do |code, name|
+    item = lang_menu.add_item(name) {
+      MSPhysics::Language.set(code)
+      UI.messagebox(MSPhysics::Language.t('language_restart_notice'), MB_OK)
+    }
+    lang_menu.set_validation_proc(item) {
+      MSPhysics::Language.current == code ? MF_CHECKED : MF_UNCHECKED
+    }
+  end
+
+  plugin_menu.add_separator
+
+  plugin_menu.add_item(MSPhysics::Language.t('Homepage')) {
     UI.openURL("http://sketchucation.com/forums/viewtopic.php?f=323&t=56852")
   }
 
-  plugin_menu.add_item('Wiki') {
+  plugin_menu.add_item(MSPhysics::Language.t('Wiki')) {
     UI.openURL("https://github.com/AntonSynytsia/MSPhysics/wiki")
   }
 
-  plugin_menu.add_item('Models') {
+  plugin_menu.add_item(MSPhysics::Language.t('Models')) {
     UI.openURL("https://3dwarehouse.sketchup.com/search.html?q=msphysics&backendClass=entity")
   }
 
-  plugin_menu.add_item('About') {
+  plugin_menu.add_item(MSPhysics::Language.t('About')) {
     msg = "#{MSPhysics::NAME} #{MSPhysics::VERSION} -- #{MSPhysics::RELEASE_DATE}\n"
     msg << "Powered by Newton Dynamics #{MSPhysics::ExtensionLoader.native_loaded? ? MSPhysics::Newton.get_version : 'n/a (native library not loaded)'}\n"
     msg << "Copyright #{MSPhysics.extension.copyright}"
