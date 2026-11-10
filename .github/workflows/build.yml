@@ -68,6 +68,16 @@ permissions:
 
 env:
   VS_SOLUTION: C++Extension/Projects/VS/MSPhysics.sln
+  # NOTE 2026-11-10: the .sln build fails on GitHub runners with MSB4025
+  # (dgPhysics/newton/msp_lib .vcxproj.metaproj not found) even after
+  # removing the stale UpgradeFromVC71.props import and dropping /m:
+  # only the two dependency-free leaf projects (dMath, dgCore) load, the
+  # three projects with solution dependencies never get a .metaproj.
+  # Workaround: build msp_lib.vcxproj directly — its ProjectReference
+  # chain (dMath, newton -> dgCore, dgPhysics) pulls in the whole tree
+  # and skips solution/.metaproj generation entirely. SolutionDir is
+  # passed explicitly because it is only defined for .sln builds.
+  VS_MSP_LIB: C++Extension/Projects/VS/msp_lib.vcxproj
   XCODE_MSP_LIB: C++Extension/Projects/xCode/msp_lib.xcodeproj
   XCODE_NEWTON: C++Extension/Projects/xCode/newton.xcodeproj
   MACOSX_DEPLOYMENT_TARGET: '12.0'
@@ -83,7 +93,10 @@ jobs:
       - uses: microsoft/setup-msbuild@v2
 
       - name: Build Ruby 3.2 (x64)
-        run: msbuild "${{ env.VS_SOLUTION }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /v:m
+        # Builds msp_lib.vcxproj directly (see env note): the .sln build
+        # fails with MSB4025 on this runner; ProjectReferences pull in
+        # dMath/newton/dgCore/dgPhysics automatically.
+        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /p:SolutionDir="C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
         run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so"
@@ -115,7 +128,8 @@ jobs:
       - name: Build Ruby 3.4 (x64)
         # BLOCKED: needs ThirdParty/Ruby 3.4 headers + x64-ucrt-ruby340.lib
         # and the `Release (3.4)|x64` configuration (see header comment).
-        run: msbuild "${{ env.VS_SOLUTION }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /v:m
+        # Builds the .vcxproj directly, same .sln/MSB4025 workaround as 3.2.
+        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /p:SolutionDir="C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
         run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.4)\msp_lib.so"
