@@ -104,7 +104,15 @@ jobs:
         run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /p:SolutionDir="${{ github.workspace }}/C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
-        run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so"
+        # NOTE 2026-11-10: dumpbin is NOT on PATH in the default pwsh
+        # shell (setup-msbuild only adds msbuild), so the bare `dumpbin`
+        # call failed with "not recognized" even though the build itself
+        # had succeeded and produced msp_lib.so. Locate it under VS 2022.
+        shell: pwsh
+        run: |
+          $dumpbin = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dumpbin) { throw 'dumpbin not found under VS 2022' }
+          & $dumpbin /EXPORTS 'C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so'
 
       - name: Verify artifact type
         shell: pwsh
@@ -138,7 +146,12 @@ jobs:
         run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /p:SolutionDir="${{ github.workspace }}/C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
-        run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.4)\msp_lib.so"
+        # Same dumpbin PATH note as the 3.2 job (see above).
+        shell: pwsh
+        run: |
+          $dumpbin = Get-ChildItem 'C:\Program Files\Microsoft Visual Studio\2022\*\VC\Tools\MSVC\*\bin\Hostx64\x64\dumpbin.exe' | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $dumpbin) { throw 'dumpbin not found under VS 2022' }
+          & $dumpbin /EXPORTS 'C++Extension\Projects\VS\x64\msp_lib\Release (3.4)\msp_lib.so'
 
       - uses: actions/upload-artifact@v4
         with:
