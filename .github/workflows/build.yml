@@ -96,7 +96,12 @@ jobs:
         # Builds msp_lib.vcxproj directly (see env note): the .sln build
         # fails with MSB4025 on this runner; ProjectReferences pull in
         # dMath/newton/dgCore/dgPhysics automatically.
-        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /p:SolutionDir="C++Extension/Projects/VS/" /v:m
+        # NOTE: SolutionDir MUST be absolute. A relative path is resolved
+        # against the project directory (not the checkout root), so
+        # $(SolutionDir)..\..\ThirdParty\... would point at a doubled
+        # path and ruby.h is not found (C1083). github.workspace is the
+        # absolute checkout root.
+        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.2)" /p:Platform=x64 /p:SolutionDir="${{ github.workspace }}/C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
         run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.2)\msp_lib.so"
@@ -128,8 +133,9 @@ jobs:
       - name: Build Ruby 3.4 (x64)
         # BLOCKED: needs ThirdParty/Ruby 3.4 headers + x64-ucrt-ruby340.lib
         # and the `Release (3.4)|x64` configuration (see header comment).
-        # Builds the .vcxproj directly, same .sln/MSB4025 workaround as 3.2.
-        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /p:SolutionDir="C++Extension/Projects/VS/" /v:m
+        # Builds the .vcxproj directly, same .sln/MSB4025 workaround as 3.2
+        # (and same absolute SolutionDir requirement, see 3.2 step).
+        run: msbuild "${{ env.VS_MSP_LIB }}" /p:Configuration="Release (3.4)" /p:Platform=x64 /p:SolutionDir="${{ github.workspace }}/C++Extension/Projects/VS/" /v:m
 
       - name: Verify exports (Init_msp_lib)
         run: dumpbin /EXPORTS "C++Extension\Projects\VS\x64\msp_lib\Release (3.4)\msp_lib.so"
