@@ -216,10 +216,14 @@ module MSPhysics::Dialog
           shape_dir = @selected_body.get_attribute('MSPhysics Body', 'Shape Dir', default[:shape_dir]).to_i
           cmd << "$('#body-shape_dir').val('#{shape_dir}');"
           cmd << "$('#body-shape_dir').trigger('chosen:updated');"
-          # Display material
+          # Display material (1.2.0: when Chinese, show translated display
+          # text for the two generic entries; the value attributes stay
+          # English because the selection is sent back to Ruby by value).
+          mat_default_display = MSPhysics::Language.chinese? ? '默认' : default[:material_name]
+          mat_custom_display = MSPhysics::Language.chinese? ? '自定义' : 'Custom'
           cmd << "$('#body-material').empty();"
-          cmd << "$('#body-material').append('<option value=\"#{default[:material_name]}\">#{default[:material_name]}</option>');"
-          cmd << "$('#body-material').append('<option value=\"Custom\">Custom</option>');"
+          cmd << "$('#body-material').append('<option value=\"#{default[:material_name]}\">#{mat_default_display}</option>');"
+          cmd << "$('#body-material').append('<option value=\"Custom\">#{mat_custom_display}</option>');"
           materials = MSPhysics::Materials.sort { |a, b| a.name <=> b.name }
           materials.each { |material|
             cmd << "$('#body-material').append('<option value=\"#{material.name}\">#{material.name}</option>');"

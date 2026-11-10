@@ -111,6 +111,35 @@ CONTROL_PANEL = {
     'Drag slider to control.': '拖动滑块进行控制。',
 }
 
+# Dropdown option display texts (<option value="...">TEXT</option>).
+# Only the display text is translated: the value attribute is what the
+# dialog JS sends back to Ruby (params.selected), so values stay English
+# and the selection logic is untouched. Editor theme names (proper nouns)
+# and plain numbers are intentionally left in English.
+DIALOG_OPTIONS = {
+    'Null': '空', 'Box': '立方体', 'Sphere': '球体', 'Cone': '圆锥',
+    'Cylinder': '圆柱', 'Chamfer Cylinder': '倒角圆柱', 'Capsule': '胶囊',
+    'Convex Hull': '凸包', 'Compound': '复合', 'Static Mesh': '静态网格',
+    'X-axis': 'X 轴', 'Y-axis': 'Y 轴', 'Z-axis': 'Z 轴',
+    'Dynamic': '动态', 'Kinematic': '运动学',
+    'by Density': '按密度', 'by Mass': '按质量',
+    'Mode 1': '模式 1', 'Mode 2': '模式 2',
+    'Degrees': '度', 'Radians': '弧度', 'Meters': '米',
+    'Centimeters': '厘米', 'Decimeters': '分米', 'Millimeters': '毫米',
+    'Inches': '英寸', 'Feet': '英尺', 'Yards': '码',
+    'Accurate': '精确', 'Fast': '快速', 'Normal': '正常',
+    'Normal (1/60)': '正常 (1/60)', 'Double (1/30)': '双倍 (1/30)',
+    'Control by Position': '按位置控制',
+    'Control by Speed - Adaptive': '按速度控制 - 自适应',
+    'Control by Speed - Strict': '按速度控制 - 严格',
+    "Angular Spring - Hooke's": '角弹簧 - 胡克',
+    'Angular Spring - Normal': '角弹簧 - 普通',
+    "Spring - Hooke's": '弹簧 - 胡克', 'Spring - Normal': '弹簧 - 普通',
+    'Angular Friction': '角摩擦',
+    'Off': '关闭', 'One Way': '单向', 'Loop Around': '循环往返',
+    'Repeat Forth and Back': '前后重复', 'Free': '自由', 'Upright': '直立',
+}
+
 
 def translate_text_nodes(src, mapping):
     """Replace inner text of label/heading/tab/title/button/description
@@ -135,6 +164,25 @@ def translate_text_nodes(src, mapping):
     return src
 
 
+def translate_options(src, mapping):
+    """Translate <option> display text only; value attributes are data
+    (the JS sends params.selected, i.e. the value, back to Ruby)."""
+    def repl(m):
+        value, text = m.group(1), m.group(2)
+        if text in mapping:
+            return '<option value="%s">%s</option>' % (value, mapping[text])
+        # 'Iterative N Pass(es)' -> '迭代 N 次'; 'x 1/N (1/M)' -> '× 1/N (1/M)'
+        mm = re.fullmatch(r'Iterative (\d+) Pass(?:es)?', text)
+        if mm:
+            return '<option value="%s">迭代 %s 次</option>' % (value, mm.group(1))
+        mm = re.fullmatch(r'x 1/(\d+) \(1/(\d+)\)', text)
+        if mm:
+            return '<option value="%s">× 1/%s (1/%s)</option>' % (
+                value, mm.group(1), mm.group(2))
+        return m.group(0)
+    return re.sub(r'<option value="([^"]*)">([^<]*)</option>', repl, src)
+
+
 def main():
     import os
     base = os.path.join(os.path.dirname(__file__), '..', 'RubyExtension',
@@ -145,6 +193,10 @@ def main():
         dst_path = os.path.join(base, name.replace('.html', '.zh.html'))
         src = open(src_path, encoding='utf-8').read()
         out = translate_text_nodes(src, mapping)
+        if name == 'dialog.html':
+            out = translate_options(out, DIALOG_OPTIONS)
+            out = out.replace('data-placeholder="Unknown"',
+                              'data-placeholder="未知"')
         out = out.replace('<html lang="en">', '<html lang="zh-CN">', 1)
         open(dst_path, 'w', encoding='utf-8').write(out)
         changed = len(re.findall(r'>[^<]*<', out))

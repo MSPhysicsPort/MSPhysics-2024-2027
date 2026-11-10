@@ -51,7 +51,7 @@
                   </colgroup>
                   <tr title="Adjusts the DPI scale of this UI dialog. (Windows only!)">
                     <td><label class="description spacing_tab" for="dialog-scale">缩放</label></td>
-                    <td><select id="dialog-scale" data-placeholder="Unknown" class="chosen-select-custom drop-down">
+                    <td><select id="dialog-scale" data-placeholder="未知" class="chosen-select-custom drop-down">
                       <option value="0.5">0.5</option>
                       <option value="0.6">0.6</option>
                       <option value="0.7">0.7</option>
@@ -91,11 +91,11 @@
                     <col style="width:40%;">
                     <col style="width:60%;">
                   </colgroup>
-                  <tr><td colspan="2"><select id="simulation-animate_scenes_state" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Off</option>
-                    <option value="1">One Way</option>
-                    <option value="2">Repeat Forth and Back</option>
-                    <option value="3">Loop Around</option>
+                  <tr><td colspan="2"><select id="simulation-animate_scenes_state" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">关闭</option>
+                    <option value="1">单向</option>
+                    <option value="2">前后重复</option>
+                    <option value="3">循环往返</option>
                   </select></td></tr>
                   <tr title="Whether to play the scenes animation backwards.">
                     <td><label class="description spacing_tab" for="simulation-animate_scenes_reversed">反向</label></td>
@@ -113,10 +113,10 @@
                     <col style="width:15%;">
                     <col style="width:60%;">
                   </colgroup>
-                  <tr><td colspan="3"><select id="simulation-key_nav_state" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Off</option>
-                    <option value="1">Normal</option>
-                    <option value="2">Upright</option>
+                  <tr><td colspan="3"><select id="simulation-key_nav_state" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">关闭</option>
+                    <option value="1">正常</option>
+                    <option value="2">直立</option>
                   </select></td></tr>
                   <tr>
                     <td><label title="The velocity of the keyboard navigation in m/s. Use WSADQE keys for motion." class="description spacing_tab" for="simulation-key_nav_velocity">速度</label></td>
@@ -171,53 +171,53 @@
                 <tr><td title="The smaller the update timestep is the more accurate the simulation is; 1/1200 is the smallest; 1/30 is the highest."><p class="heading">更新步长</p></td></tr>
                 <tr><td><table class="struct_table">
                   <colgroup><col style="width:100%;"></colgroup>
-                  <tr><td><select id="simulation-update_timestep" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="30">Double (1/30)</option>
-                    <option value="60">Normal (1/60)</option>
-                    <option value="120">x 1/2 (1/120)</option>
-                    <option value="180">x 1/3 (1/180)</option>
-                    <option value="240">x 1/4 (1/240)</option>
-                    <option value="300">x 1/5 (1/300)</option>
-                    <option value="360">x 1/6 (1/360)</option>
-                    <option value="420">x 1/7 (1/420)</option>
-                    <option value="480">x 1/8 (1/480)</option>
-                    <option value="540">x 1/9 (1/540)</option>
-                    <option value="600">x 1/10 (1/600)</option>
-                    <option value="720">x 1/12 (1/720)</option>
-                    <option value="840">x 1/14 (1/840)</option>
-                    <option value="960">x 1/16 (1/960)</option>
-                    <option value="1080">x 1/18 (1/1080)</option>
-                    <option value="1200">x 1/20 (1/1200)</option>
+                  <tr><td><select id="simulation-update_timestep" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="30">双倍 (1/30)</option>
+                    <option value="60">正常 (1/60)</option>
+                    <option value="120">× 1/2 (1/120)</option>
+                    <option value="180">× 1/3 (1/180)</option>
+                    <option value="240">× 1/4 (1/240)</option>
+                    <option value="300">× 1/5 (1/300)</option>
+                    <option value="360">× 1/6 (1/360)</option>
+                    <option value="420">× 1/7 (1/420)</option>
+                    <option value="480">× 1/8 (1/480)</option>
+                    <option value="540">× 1/9 (1/540)</option>
+                    <option value="600">× 1/10 (1/600)</option>
+                    <option value="720">× 1/12 (1/720)</option>
+                    <option value="840">× 1/14 (1/840)</option>
+                    <option value="960">× 1/16 (1/960)</option>
+                    <option value="1080">× 1/18 (1/1080)</option>
+                    <option value="1200">× 1/20 (1/1200)</option>
                   </select></td></tr>
                 </table></td></tr>
                 <tr><td title="The more iterations there are the more accurate the simulation is."><p class="heading">求解器模型</p></td></tr>
                 <tr><td><table class="struct_table">
                   <colgroup><col style="width:100%;"></colgroup>
-                  <tr><td><select id="simulation-solver_model" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="1">Iterative 1 Pass</option>
-                    <option value="2">Iterative 2 Passes</option>
-                    <option value="3">Iterative 3 Passes</option>
-                    <option value="4">Iterative 4 Passes</option>
-                    <option value="5">Iterative 5 Passes</option>
-                    <option value="6">Iterative 6 Passes</option>
-                    <option value="7">Iterative 7 Passes</option>
-                    <option value="8">Iterative 8 Passes</option>
-                    <option value="9">Iterative 9 Passes</option>
-                    <option value="10">Iterative 10 Passes</option>
-                    <option value="12">Iterative 12 Passes</option>
-                    <option value="16">Iterative 16 Passes</option>
-                    <option value="24">Iterative 24 Passes</option>
-                    <option value="32">Iterative 32 Passes</option>
-                    <option value="48">Iterative 48 Passes</option>
-                    <option value="64">Iterative 64 Passes</option>
+                  <tr><td><select id="simulation-solver_model" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="1">迭代 1 次</option>
+                    <option value="2">迭代 2 次</option>
+                    <option value="3">迭代 3 次</option>
+                    <option value="4">迭代 4 次</option>
+                    <option value="5">迭代 5 次</option>
+                    <option value="6">迭代 6 次</option>
+                    <option value="7">迭代 7 次</option>
+                    <option value="8">迭代 8 次</option>
+                    <option value="9">迭代 9 次</option>
+                    <option value="10">迭代 10 次</option>
+                    <option value="12">迭代 12 次</option>
+                    <option value="16">迭代 16 次</option>
+                    <option value="24">迭代 24 次</option>
+                    <option value="32">迭代 32 次</option>
+                    <option value="48">迭代 48 次</option>
+                    <option value="64">迭代 64 次</option>
                   </select></td></tr>
                 </table></td></tr>
                 <tr><td><p title="Accurate solver allows joints to be explicitly strong. Fast solver allows joints to be a little flexible; however, still maintain their integrity. Be cautious when using the accurate solver as it is prone to crashes under certain conditions. This option must be set prior to starting the simulation; changing it during simulation will not yield an effect." class="heading">Joint Algorithm</p></td></tr>
                 <tr><td><table class="struct_table">
                   <colgroup><col style="width:100%;"></colgroup>
-                  <tr><td><select id="simulation-joint_algorithm" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Accurate</option>
-                    <option value="2">Fast</option>
+                  <tr><td><select id="simulation-joint_algorithm" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">精确</option>
+                    <option value="2">快速</option>
                   </select></td></tr>
                 </table></td></tr>
                 <tr><td><p class="heading">设置</p></td></tr>
@@ -309,25 +309,25 @@
                     </colgroup>
                     <tr title="The collision shape to generate for this entity.">
                       <td><label class="description spacing_tab" for="body-shape">形状</label></td>
-                      <td><select id="body-shape" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                        <option value="0">Null</option>
-                        <option value="1">Box</option>
-                        <option value="2">Sphere</option>
-                        <option value="3">Cone</option>
-                        <option value="4">Cylinder</option>
-                        <option value="5">Chamfer Cylinder</option>
-                        <option value="6">Capsule</option>
-                        <option value="7">Convex Hull</option>
-                        <option value="8">Compound</option>
-                        <option value="9">Static Mesh</option>
+                      <td><select id="body-shape" data-placeholder="未知" class="chosen-select-custom drop-down">
+                        <option value="0">空</option>
+                        <option value="1">立方体</option>
+                        <option value="2">球体</option>
+                        <option value="3">圆锥</option>
+                        <option value="4">圆柱</option>
+                        <option value="5">倒角圆柱</option>
+                        <option value="6">胶囊</option>
+                        <option value="7">凸包</option>
+                        <option value="8">复合</option>
+                        <option value="9">静态网格</option>
                       </select></td>
                     </tr>
                     <tr title="The local up direction of specific collision shapes, like cylinder and cone.">
                       <td><label class="description spacing_tab" for="body-shape_dir">形状方向</label></td>
-                      <td><select id="body-shape_dir" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                        <option value="0">X-axis</option>
-                        <option value="1">Y-axis</option>
-                        <option value="2">Z-axis</option>
+                      <td><select id="body-shape_dir" data-placeholder="未知" class="chosen-select-custom drop-down">
+                        <option value="0">X 轴</option>
+                        <option value="1">Y 轴</option>
+                        <option value="2">Z 轴</option>
                       </select></td>
                     </tr>
                   </table></td></tr>
@@ -383,21 +383,21 @@
                     </colgroup>
                     <tr title="The type of body to associate to this entity. Dynamic type portrays a normal physics body that is affected by forces. Kinematic type portrays a kinematic body, that acts as a platform and can be affected by contact forces if not static.">
                       <td><label class="description spacing_tab" for="body-type">类型</label></td>
-                      <td><select id="body-type" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                        <option value="0">Dynamic</option>
-                        <option value="1">Kinematic</option>
+                      <td><select id="body-type" data-placeholder="未知" class="chosen-select-custom drop-down">
+                        <option value="0">动态</option>
+                        <option value="1">运动学</option>
                       </select></td>
                     </tr>
                     <tr title="The material to associate to the entity. This presets the density, the static/kinetic friction coefficients, and the elasticity/softness coefficients.">
                       <td><label class="description spacing_tab" for="body-material">材质</label></td>
-                      <td><select id="body-material" data-placeholder="Unknown" class="chosen-select-custom drop-down"></select></td>
+                      <td><select id="body-material" data-placeholder="未知" class="chosen-select-custom drop-down"></select></td>
                     </tr>
                     <tr><td colspan="2" class="vertical_spacing"></td></tr>
                     <tr title="Whether to control body mass by density & volume or by a particular mass value.">
                       <td><label class="description spacing_tab" for="body-mass_control">质量控制</label></td>
-                      <td><select id="body-mass_control" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                        <option value="1">by Density</option>
-                        <option value="2">by Mass</option>
+                      <td><select id="body-mass_control" data-placeholder="未知" class="chosen-select-custom drop-down">
+                        <option value="1">按密度</option>
+                        <option value="2">按质量</option>
                       </select></td>
                     </tr>
                     <tr id="body-control_by_density" title="Body density in kilograms per cubic meter (kg/m³). The mass will be computed by multiplying volume with the preset density value. The volume is calculated automatically, with exception to Null and Static Mesh shapes. If the shape is Null, volume is assumed to be 1.0 m³. If the shape is Static Mesh, volume is assumed to be 0.0 m³, thus the mass will always be zero.">
@@ -433,9 +433,9 @@
                     <tr><td colspan="2" class="vertical_spacing"></td></tr>
                     <tr title="Body magnet mode, a mode for controlling the way this magnet should work. In mode 1, actual_magnet_force = f * (d - r)² / r²; where f is the maximum magnet force (in Newtons), d is the distance between the centre of masses of this magnet and a magnetic body (in meters), and r is the maximum magnet range (in meters). In mode 2, actual_magnet_force = s / d²; where s is the magnet strength and d is the distance between the centre of masses of this magnet and a magnetic body (in meters).">
                       <td><label class="description spacing_tab" for="body-magnet_mode">磁铁模式</label></td>
-                      <td><select id="body-magnet_mode" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                        <option value="1">Mode 1</option>
-                        <option value="2">Mode 2</option>
+                      <td><select id="body-magnet_mode" data-placeholder="未知" class="chosen-select-custom drop-down">
+                        <option value="1">模式 1</option>
+                        <option value="2">模式 2</option>
                       </select></td>
                     </tr>
                     <tr id="body-magnet_mode1a" title="Body magnet force, the maximum force, in Newtons, to be applied on the surrounding magnetic bodies.">
@@ -627,7 +627,7 @@
                   </colgroup>
                   <tr>
                     <td><p class="description">主题</p></td>
-                    <td><select id="editor-theme" data-placeholder="Unknown" class="chosen-select-custom drop-down">
+                    <td><select id="editor-theme" data-placeholder="未知" class="chosen-select-custom drop-down">
                       <optgroup label="Light">
                         <option value="chrome">Chrome</option>
                         <option value="clouds">Clouds</option>
@@ -671,16 +671,16 @@
                     </select></td>
                     <td></td>
                     <td><p class="description">自动换行</p></td>
-                    <td><select id="editor-wrap" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                      <option value="off">Off</option>
+                    <td><select id="editor-wrap" data-placeholder="未知" class="chosen-select-custom drop-down">
+                      <option value="off">关闭</option>
                       <option value="40">40</option>
                       <option value="80">80</option>
                       <option value="120">120</option>
-                      <option value="free">Free</option>
+                      <option value="free">自由</option>
                     </select></td>
                     <td></td>
                     <td><p class="description">字号</p></td>
-                    <td><select id="editor-font" data-placeholder="Unknown" class="chosen-select-custom drop-down">
+                    <td><select id="editor-font" data-placeholder="未知" class="chosen-select-custom drop-down">
                       <option value="6">6</option>
                       <option value="7">7</option>
                       <option value="8">8</option>
@@ -801,9 +801,9 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="hinge-angle_units">角度单位</label></td>
-                  <td><select id="hinge-angle_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="rad">Radians</option>
-                    <option value="deg">Degrees</option>
+                  <td><select id="hinge-angle_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="rad">弧度</option>
+                    <option value="deg">度</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum angle in desired units with respect to the starting angle.">
@@ -820,10 +820,10 @@
                 </tr>
                 <tr title="Whether to apply angular friction or a type of angular spring.">
                   <td><label class="description" for="hinge-mode">模式</label></td>
-                  <td><select id="hinge-mode" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Angular Friction</option>
-                    <option value="1">Angular Spring - Normal</option>
-                    <option value="2">Angular Spring - Hooke's</option>
+                  <td><select id="hinge-mode" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">角摩擦</option>
+                    <option value="1">角弹簧 - 普通</option>
+                    <option value="2">角弹簧 - 胡克</option>
                   </select></td>
                 </tr>
                 <tr class="hinge-mode_s0" title="The angular friction, a value greater than or equal to zero.">
@@ -940,9 +940,9 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="servo-angle_units">角度单位</label></td>
-                  <td><select id="servo-angle_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="rad">Radians</option>
-                    <option value="deg">Degrees</option>
+                  <td><select id="servo-angle_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="rad">弧度</option>
+                    <option value="deg">度</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum angle in preset angle units.">
@@ -1001,14 +1001,14 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="slider-position_units">位置单位</label></td>
-                  <td><select id="slider-position_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
-                    <option value="dm">Decimeters</option>
-                    <option value="m">Meters</option>
-                    <option value="in">Inches</option>
-                    <option value="ft">Feet</option>
-                    <option value="yd">Yards</option>
+                  <td><select id="slider-position_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="mm">毫米</option>
+                    <option value="cm">厘米</option>
+                    <option value="dm">分米</option>
+                    <option value="m">米</option>
+                    <option value="in">英寸</option>
+                    <option value="ft">英尺</option>
+                    <option value="yd">码</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum position in preset units.">
@@ -1054,14 +1054,14 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="piston-position_units">位置单位</label></td>
-                  <td><select id="piston-position_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
-                    <option value="dm">Decimeters</option>
-                    <option value="m">Meters</option>
-                    <option value="in">Inches</option>
-                    <option value="ft">Feet</option>
-                    <option value="yd">Yards</option>
+                  <td><select id="piston-position_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="mm">毫米</option>
+                    <option value="cm">厘米</option>
+                    <option value="dm">分米</option>
+                    <option value="m">米</option>
+                    <option value="in">英寸</option>
+                    <option value="ft">英尺</option>
+                    <option value="yd">码</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum position in preset units.">
@@ -1090,10 +1090,10 @@
                 </tr>
                 <tr>
                   <td><label class="description" for="piston-controller_mode">控制器模式</label></td>
-                  <td><select id="piston-controller_mode" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Control by Position</option>
-                    <option value="1">Control by Speed - Strict</option>
-                    <option value="2">Control by Speed - Adaptive</option>
+                  <td><select id="piston-controller_mode" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">按位置控制</option>
+                    <option value="1">按速度控制 - 严格</option>
+                    <option value="2">按速度控制 - 自适应</option>
                   </select></td>
                 </tr>
                 <tr title="Control desired position in preset units or magnitude and direction of the linear rate, depending on the controller mode. Pass nil to 'turn off' the piston.">
@@ -1128,14 +1128,14 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="spring-position_units">位置单位</label></td>
-                  <td><select id="spring-position_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
-                    <option value="dm">Decimeters</option>
-                    <option value="m">Meters</option>
-                    <option value="in">Inches</option>
-                    <option value="ft">Feet</option>
-                    <option value="yd">Yards</option>
+                  <td><select id="spring-position_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="mm">毫米</option>
+                    <option value="cm">厘米</option>
+                    <option value="dm">分米</option>
+                    <option value="m">米</option>
+                    <option value="in">英寸</option>
+                    <option value="ft">英尺</option>
+                    <option value="yd">码</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum position in preset units with respect to the starting position.">
@@ -1156,9 +1156,9 @@
                 </tr>
                 <tr title="A type of spring to use.">
                   <td><label class="description" for="spring-mode">模式</label></td>
-                  <td><select id="spring-mode" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Spring - Normal</option>
-                    <option value="1">Spring - Hooke's</option>
+                  <td><select id="spring-mode" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">弹簧 - 普通</option>
+                    <option value="1">弹簧 - 胡克</option>
                   </select></td>
                 </tr>
                 <tr class="spring-mode_s0" title="The acceleration factor of the spring, a value greater than or equal to zero.">
@@ -1248,14 +1248,14 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="corkscrew-position_units">位置单位</label></td>
-                  <td><select id="corkscrew-position_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
-                    <option value="dm">Decimeters</option>
-                    <option value="m">Meters</option>
-                    <option value="in">Inches</option>
-                    <option value="ft">Feet</option>
-                    <option value="yd">Yards</option>
+                  <td><select id="corkscrew-position_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="mm">毫米</option>
+                    <option value="cm">厘米</option>
+                    <option value="dm">分米</option>
+                    <option value="m">米</option>
+                    <option value="in">英寸</option>
+                    <option value="ft">英尺</option>
+                    <option value="yd">码</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum position in preset units.">
@@ -1276,9 +1276,9 @@
                 </tr>
                 <tr>
                   <td><label class="description" for="corkscrew-angle_units">角度单位</label></td>
-                  <td><select id="corkscrew-angle_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="rad">Radians</option>
-                    <option value="deg">Degrees</option>
+                  <td><select id="corkscrew-angle_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="rad">弧度</option>
+                    <option value="deg">度</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum angle in preset units.">
@@ -1319,9 +1319,9 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="ball_and_socket-angle_units">角度单位</label></td>
-                  <td><select id="ball_and_socket-angle_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="rad">Radians</option>
-                    <option value="deg">Degrees</option>
+                  <td><select id="ball_and_socket-angle_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="rad">弧度</option>
+                    <option value="deg">度</option>
                   </select></td>
                 </tr>
                 <tr title="The maximum cone angle in preset units.">
@@ -1375,9 +1375,9 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="universal-angle_units">角度单位</label></td>
-                  <td><select id="universal-angle_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="rad">Radians</option>
-                    <option value="deg">Degrees</option>
+                  <td><select id="universal-angle_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="rad">弧度</option>
+                    <option value="deg">度</option>
                   </select></td>
                 </tr>
                 <tr title="The minimum angle along joint Z-axis in preset units.">
@@ -1488,14 +1488,14 @@
                 </colgroup>
                 <tr>
                   <td><label class="description" for="curvy_piston-position_units">位置单位</label></td>
-                  <td><select id="curvy_piston-position_units" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="mm">Millimeters</option>
-                    <option value="cm">Centimeters</option>
-                    <option value="dm">Decimeters</option>
-                    <option value="m">Meters</option>
-                    <option value="in">Inches</option>
-                    <option value="ft">Feet</option>
-                    <option value="yd">Yards</option>
+                  <td><select id="curvy_piston-position_units" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="mm">毫米</option>
+                    <option value="cm">厘米</option>
+                    <option value="dm">分米</option>
+                    <option value="m">米</option>
+                    <option value="in">英寸</option>
+                    <option value="ft">英尺</option>
+                    <option value="yd">码</option>
                   </select></td>
                 </tr>
                 <tr title="The linear rate in preset units per second, a numeric value greater than or equal to zero.">
@@ -1532,10 +1532,10 @@
                 </tr>
                 <tr>
                   <td><label class="description" for="curvy_piston-controller_mode">控制器模式</label></td>
-                  <td><select id="curvy_piston-controller_mode" data-placeholder="Unknown" class="chosen-select-custom drop-down">
-                    <option value="0">Control by Position</option>
-                    <option value="1">Control by Speed - Strict</option>
-                    <option value="2">Control by Speed - Adaptive</option>
+                  <td><select id="curvy_piston-controller_mode" data-placeholder="未知" class="chosen-select-custom drop-down">
+                    <option value="0">按位置控制</option>
+                    <option value="1">按速度控制 - 严格</option>
+                    <option value="2">按速度控制 - 自适应</option>
                   </select></td>
                 </tr>
                 <tr title="Control desired position in preset units or magnitude and direction of the linear rate, depending on the controller mode. Pass nil to 'turn off' the piston.">
