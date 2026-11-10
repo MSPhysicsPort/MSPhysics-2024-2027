@@ -281,7 +281,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          merge-multiple: true
+        # NOTE 2026-11-10: do NOT set merge-multiple here. With it, all
+        # artifacts are flattened into artifacts/ (and same-named files
+        # collide), but the assemble step below expects per-artifact
+        # subdirectories (artifacts/win64-3.2-msp_lib/msp_lib.so, ...).
+        # The flattened layout broke the package job with
+        # "cannot stat 'artifacts/win64-3.2-msp_lib/msp_lib.so'".
 
       - name: Install llvm-lipo (Linux equivalent of macOS lipo)
         # NOTE: Apple's `lipo` only ships with Xcode, so it does not exist
