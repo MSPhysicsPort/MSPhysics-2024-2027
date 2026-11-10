@@ -7,6 +7,12 @@
 [GitHub](https://github.com/AntonSynytsia/MSPhysics)
 
 
+## Demo video
+
+[![Sketchup2026 successfully runs MSPhysics](https://img.youtube.com/vi/Yp9EG-Qn7ik/0.jpg)](https://youtu.be/Yp9EG-Qn7ik)
+
+MSPhysics 1.2.0 running on SketchUp 2026 (Windows 11, Ruby 3.2.2). [Watch on YouTube](https://youtu.be/Yp9EG-Qn7ik)
+
 # Overview
 
 MSPhysics is a real-time physics simulation extension for SketchUp.
