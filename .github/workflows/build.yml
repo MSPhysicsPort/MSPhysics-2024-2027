@@ -82,7 +82,7 @@ env:
 
 jobs:
   # ---------------------------------------------------------------- Windows
-  build-windows-3.2:
+  build-windows-3-2:
     name: build-windows-3.2 (SU2024/2025/2026, Ruby 3.2.2)
     runs-on: windows-2022
     steps:
@@ -112,7 +112,7 @@ jobs:
           name: win64-newton
           path: C++Extension/Projects/VS/x64/newton/Release (3.2)/newton.dll
 
-  build-windows-3.4:
+  build-windows-3-4:
     name: build-windows-3.4 (SU2027, Ruby 3.4.9) — EXPECTED TO FAIL until 3.4 headers/libs land
     runs-on: windows-2022
     steps:
@@ -134,7 +134,7 @@ jobs:
           path: C++Extension/Projects/VS/x64/msp_lib/Release (3.4)/msp_lib.so
 
   # ------------------------------------------------------------------ macOS
-  build-macos-3.2-x86_64:
+  build-macos-3-2-x86_64:
     name: build-macos-3.2-x86_64 (SU2024/2025/2026, Ruby 3.2.2, Intel)
     runs-on: macos-14
     steps:
@@ -173,7 +173,7 @@ jobs:
           name: macos-newton-x86_64
           path: build/macos-newton-x86_64/Build/Products/Release/newton.dylib
 
-  build-macos-3.2-arm64:
+  build-macos-3-2-arm64:
     name: build-macos-3.2-arm64 (SU2024/2025/2026, Ruby 3.2.2, Apple Silicon)
     runs-on: macos-14
     steps:
@@ -211,7 +211,7 @@ jobs:
           name: macos-newton-arm64
           path: build/macos-newton-arm64/Build/Products/Release/newton.dylib
 
-  build-macos-3.4-arm64:
+  build-macos-3-4-arm64:
     name: build-macos-3.4-arm64 (SU2027, Ruby 3.4.9, Apple Silicon) — EXPECTED TO FAIL until 3.4 headers land
     runs-on: macos-14
     steps:
@@ -248,7 +248,7 @@ jobs:
     # skipped with a warning when absent; the structural check requires
     # only the Windows 3.2 binaries.
     needs:
-      - build-windows-3.2
+      - build-windows-3-2
     steps:
       - uses: actions/checkout@v4
 
