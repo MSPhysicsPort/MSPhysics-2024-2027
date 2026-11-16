@@ -13,6 +13,12 @@
 
 MSPhysics 1.2.0 running on SketchUp 2026 (Windows 11, Ruby 3.2.2). [Watch on YouTube](https://youtu.be/Yp9EG-Qn7ik)
 
+## Testing status (v1.2.0, Windows)
+
+- SketchUp 2026: tested on a real machine (Windows 11, SketchUp 26.0.429, Ruby 3.2.2). The extension loads and simulation runs. See the demo video above.
+- SketchUp 2024 and SketchUp 2025: not tested yet. They use the same Ruby 3.2.2 build as SketchUp 2026, so v1.2.0 is expected to work, but this has not been verified on a real machine. Testing feedback is very welcome. Please open an issue with your SketchUp version, Windows version, and what happened.
+- SketchUp 2027: not tested and not yet supported. The Ruby 3.4.9 native library has not been built (see `PORTING.md`), so physics simulation will not run on SU2027 with v1.2.0. Feedback is welcome, but please note a separate Ruby 3.4 build is needed first.
+
 # Overview
 
 MSPhysics is a real-time physics simulation extension for SketchUp.
