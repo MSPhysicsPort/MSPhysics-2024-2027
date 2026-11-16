@@ -19,7 +19,18 @@ MSPhysics 1.2.0 running on SketchUp 2026 (Windows 11, Ruby 3.2.2). [Watch on You
 - SketchUp 2024 and SketchUp 2025: not tested yet. They use the same Ruby 3.2.2 build as SketchUp 2026, so v1.2.0 is expected to work, but this has not been verified on a real machine. Testing feedback is very welcome. Please open an issue with your SketchUp version, Windows version, and what happened.
 - SketchUp 2027: not tested and not yet supported. The Ruby 3.4.9 native library has not been built (see `PORTING.md`), so physics simulation will not run on SU2027 with v1.2.0. Feedback is welcome, but please note a separate Ruby 3.4 build is needed first.
 
+## Installation (v1.2.0, Windows)
+
+1. Download `MSPhysics-1.2.0-unsigned.rbz` from [Releases](https://github.com/MSPhysicsPort/MSPhysics-2024-2027/releases/tag/v1.2.0). Do not try to install the repository ZIP itself; if you downloaded the repository, the installable file is `dist/MSPhysics-1.2.0-unsigned.rbz`.
+2. If an older MSPhysics 1.2.0 is installed, uninstall it first in Extension Manager.
+3. In SketchUp, open Extension Manager, choose Install Extension, and select the `.rbz` file. When SketchUp warns that the extension is unsigned, allow the installation, then restart SketchUp.
+4. No separate AMS Library install is needed. v1.2.0 bundles its own compatibility layer, and a leftover `Plugins/ams_Lib/` folder does not affect loading.
+
+Language: Plugins > MSPhysics > Language, choose English or Chinese (Simplified). Toolbar and menu text apply after restarting SketchUp; dialogs use the new language the next time they open.
+
 # Overview
+
+_Note: the description below is upstream's original text. In this 1.2.0 port, AMS Library is no longer required, and fullscreen switching is degraded; see Compatibility and Requirements below and `RubyExtension/MSPhysics/DEGRADED.md`._
 
 MSPhysics is a real-time physics simulation extension for SketchUp.
 
@@ -64,11 +75,11 @@ keyboard commands taking control over the simulation. All that is possible with
 MSPhysics.
 
 
-# Compatibility and Requirements
+# Compatibility and Requirements (v1.2.0)
 
-* Microsoft Windows XP or later / Mac OS X 10.6+
-* SketchUp 6 or later. SU2017 64bit is recommended!
-* [AMS_Library 3.5.0+](http://sketchucation.com/forums/viewtopic.php?f=323&t=55067#p499835)
+* Windows 64-bit only, SketchUp 2024, 2025, or 2026 (Ruby 3.2.2). See Testing status above. SketchUp 2027 is not yet supported: the Ruby 3.4.9 native library has not been built. macOS builds are not included in v1.2.0.
+* No AMS Library is required or used. v1.2.0 bundles a pure-Ruby compatibility layer (`ams_shim.rb`). Some former AMS-only features (fullscreen switching, MIDI, control-panel translucency) are degraded to no-ops; see `RubyExtension/MSPhysics/DEGRADED.md`. For the full porting notes, see `PORTING.md`.
+* This is an unsigned build for testing. A releasable build must be signed through the Trimble signing portal.
 
 
 # ThirdParty Libraries
