@@ -1,10 +1,10 @@
 [English version](README.md)
 
-[主页](http://sketchucation.com/forums/viewtopic.php?f=323&t=56852)
+[上游论坛帖](https://community.sketchucation.com/topic/145378/msphysics-1-0-3-16-october-2017)
 
 [Wiki](https://github.com/AntonSynytsia/MSPhysics/wiki)
 
-[文档](http://www.rubydoc.info/github/AntonSynytsia/MSPhysics/index)
+[文档](https://www.rubydoc.info/github/AntonSynytsia/MSPhysics/index)
 
 [上游 GitHub](https://github.com/AntonSynytsia/MSPhysics)
 

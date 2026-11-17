@@ -1657,7 +1657,7 @@ unless file_loaded?(__FILE__)
   plugin_menu.add_separator
 
   plugin_menu.add_item(MSPhysics::Language.t('Homepage')) {
-    UI.openURL("http://sketchucation.com/forums/viewtopic.php?f=323&t=56852")
+    UI.openURL("https://community.sketchucation.com/topic/145378/msphysics-1-0-3-16-october-2017")
   }
 
   plugin_menu.add_item(MSPhysics::Language.t('Wiki')) {
