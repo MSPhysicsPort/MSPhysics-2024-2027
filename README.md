@@ -1,3 +1,5 @@
+[中文版说明](README.zh-CN.md)
+
 [Homepage](http://sketchucation.com/forums/viewtopic.php?f=323&t=56852)
 
 [Wiki](https://github.com/AntonSynytsia/MSPhysics/wiki)
